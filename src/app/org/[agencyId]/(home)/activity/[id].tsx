@@ -3,12 +3,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/Text';
-import { AttendanceTab, GoTo, MaterialsTab, OverviewTab, SessionsTab, SubKey, SubmissionsTab, TabName } from '@/components/ActivityTabs';
+import { AttendanceTab, GoTo, MaterialsTab, OverviewTab, SessionFocus, SessionsTab, SubmissionsTab, TabName } from '@/components/ActivityTabs';
 import { useBrand } from '@/components/Brand';
 import { BottomSheet, StatusPill } from '@/components/bits';
+import { useSubmissionForms } from '@/components/forms';
 import { useToast } from '@/components/sheets';
 import { Button, PressableScale } from '@/components/ui';
-import { activities } from '@/data/mock';
+import { activities, isRegistered } from '@/data/mock';
+import { certificateRules } from '@/data/sample';
+import { useDemo } from '@/store/demo';
 import { colors, radius, shadow, shadowTop } from '@/theme';
 
 const TABS: TabName[] = ['Overview', 'Sessions', 'Materials', 'Attendance', 'Submissions'];
@@ -18,15 +21,19 @@ export default function ActivityWorkspace() {
   const { agencyId, id } = useLocalSearchParams<{ agencyId: string; id: string }>();
   const activity = activities.find((a) => a.id === id);
   const brand = useBrand();
+  const demo = useDemo();
   const [tab, setTab] = useState<TabName>('Overview');
-  const [sub, setSub] = useState<SubKey>('feedback');
+  const [focus, setFocus] = useState<SessionFocus | null>(null);
+  const [materialsFor, setMaterialsFor] = useState('');
   const [options, setOptions] = useState(false);
   const [details, setDetails] = useState(false);
   const [saved, setSaved] = useState(false);
   const { notify, toast } = useToast();
-  const goTo: GoTo = (next, nextSub) => {
+  const forms = useSubmissionForms(activity ? [activity] : [], notify);
+  const goTo: GoTo = (next, opts) => {
     setTab(next);
-    if (nextSub) setSub(nextSub);
+    setFocus(opts?.session ?? null);
+    setMaterialsFor(opts?.materials ?? '');
   };
 
   if (!activity) return <Text style={styles.empty}>Activity not found.</Text>;
@@ -36,7 +43,7 @@ export default function ActivityWorkspace() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: tab === 'Attendance' ? 130 : 28 }}>
         <View style={[styles.hero, { backgroundColor: brand.soft }]}>
           <View style={styles.heroTop}>
-            <Text style={[styles.kicker, { color: brand.primary }]}>Registered Participant</Text>
+            <Text style={[styles.kicker, { color: brand.primary }]}>{isRegistered(activity, demo.joined) ? 'Registered Participant' : 'Not registered'}</Text>
             {/* Status, favorite and options sit inside the activity card itself. */}
             <View style={styles.heroRight}>
               <StatusPill label={activity.status} tone="info" />
@@ -78,7 +85,7 @@ export default function ActivityWorkspace() {
               <PressableScale
                 key={t}
                 scaleTo={0.94}
-                onPress={() => setTab(t)}
+                onPress={() => goTo(t)}
                 style={[styles.tab, tab === t && { backgroundColor: brand.primary }]}
               >
                 <Text style={[styles.tabText, tab === t && { color: '#fff' }]}>{t}</Text>
@@ -87,13 +94,13 @@ export default function ActivityWorkspace() {
           </ScrollView>
         </View>
 
-        {tab === 'Overview' && <OverviewTab activity={activity} goTo={goTo} />}
-        {tab === 'Sessions' && <SessionsTab activityId={activity.id} goTo={goTo} notify={notify} />}
-        {tab === 'Materials' && <MaterialsTab notify={notify} />}
-        {tab === 'Attendance' && <AttendanceTab title={activity.title} />}
-        {tab === 'Submissions' && (
-          <SubmissionsTab activityId={activity.id} activityTitle={activity.title} sub={sub} onSub={setSub} notify={notify} />
+        {tab === 'Overview' && <OverviewTab activity={activity} goTo={goTo} open={forms.open} />}
+        {tab === 'Sessions' && (
+          <SessionsTab focus={focus} onFocus={setFocus} goTo={goTo} notify={notify} />
         )}
+        {tab === 'Materials' && <MaterialsTab notify={notify} session={materialsFor} />}
+        {tab === 'Attendance' && <AttendanceTab title={activity.title} />}
+        {tab === 'Submissions' && <SubmissionsTab activity={activity} open={forms.open} />}
       </ScrollView>
 
       {tab === 'Attendance' && (
@@ -142,11 +149,11 @@ export default function ActivityWorkspace() {
 
       <BottomSheet visible={details} onClose={() => setDetails(false)} title="Full activity details" subtitle={activity.title}>
         {[
-          ['Registration', 'Confirmed'],
-          ['Registered on', 'June 2, 2025'],
-          ['Capacity', '41 of 50 slots taken'],
-          ['Registration closed', 'June 16, 2025'],
-          ['Certificate rules', '4 of 6 check-ins, all feedback, reentry plan'],
+          ['Registration', isRegistered(activity, demo.joined) ? 'Registered' : 'Not registered'],
+          ['Capacity', activity.capacity ? `${activity.capacity.taken} of ${activity.capacity.max} slots taken` : '41 of 50 slots taken'],
+          ['Min. attendance', `${certificateRules.minAttendance}% of check points`],
+          ['Required for certificate', ['Feedback', 'Reentry plan', 'Output'].filter((_, i) => [certificateRules.requireFeedback, certificateRules.requireReentry, certificateRules.requireOutput][i]).join(', ')],
+          ['Certificate release', certificateRules.release],
         ].map(([k, v]) => (
           <View key={k} style={styles.detailRow}>
             <Text style={styles.meta}>{k}</Text>
@@ -156,6 +163,7 @@ export default function ActivityWorkspace() {
         <Button label="Close" variant="soft" onPress={() => setDetails(false)} />
       </BottomSheet>
 
+      {forms.node}
       {toast}
     </View>
   );

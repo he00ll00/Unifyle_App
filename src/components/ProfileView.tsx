@@ -5,8 +5,9 @@ import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { BottomSheet } from '@/components/bits';
 import { useToast } from '@/components/sheets';
 import { Text, TextInput } from '@/components/Text';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, Chip } from '@/components/ui';
 import { user } from '@/data/mock';
+import { profileExtras } from '@/data/sample';
 import { useStore } from '@/store/AppStore';
 import { colors } from '@/theme';
 
@@ -28,6 +29,11 @@ export function ProfileView() {
   const [sheet, setSheet] = useState<'profile' | 'password' | 'notifications' | null>(null);
   const [name, setName] = useState<string>(user.name);
   const [email, setEmail] = useState<string>(user.email);
+  // Participant profile fields kept by the admin system (participant_profile).
+  const [sex, setSex] = useState(profileExtras.sex);
+  const [birthDate, setBirthDate] = useState(profileExtras.birthDate);
+  const [province, setProvince] = useState(profileExtras.province);
+  const [municipality, setMunicipality] = useState(profileExtras.municipality);
   const [prefs, setPrefs] = useState({ reminders: true, updates: true, messages: false });
   const { notify, toast } = useToast();
   const offline = !online;
@@ -94,6 +100,14 @@ export function ProfileView() {
           keyboardType="email-address"
           style={styles.input}
         />
+        <View style={styles.sexRow}>
+          {['Male', 'Female', 'Prefer not to say'].map((o) => (
+            <Chip key={o} label={o} active={sex === o} onPress={() => setSex(o)} />
+          ))}
+        </View>
+        <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="Birth date" placeholderTextColor={colors.icon} style={styles.input} />
+        <TextInput value={province} onChangeText={setProvince} placeholder="Province" placeholderTextColor={colors.icon} style={styles.input} />
+        <TextInput value={municipality} onChangeText={setMunicipality} placeholder="Municipality" placeholderTextColor={colors.icon} style={styles.input} />
         <Button label="Save changes" onPress={() => done('Profile updated (sample)')} />
       </BottomSheet>
 
@@ -138,6 +152,7 @@ const styles = StyleSheet.create({
   item: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   disabledItem: { opacity: 0.55 },
   input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: colors.text },
+  sexRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   prefRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
   itemText: { flex: 1, fontSize: 14, color: colors.text },
   h: { fontSize: 14, fontWeight: '600', color: colors.text },

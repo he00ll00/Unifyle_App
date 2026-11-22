@@ -3,7 +3,9 @@ import * as Network from 'expo-network';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { agencies as defaultAgencies, Agency, invitations } from '@/data/mock';
 
-type JoinResult = { ok: true; agency: Agency } | { ok: false; error: string };
+/** 
+eedsCategory: the code has no preset participant category, so ask the participant to pick one. */
+type JoinResult = { ok: true; agency: Agency } | { ok: false; error: string; needsCategory?: boolean };
 
 type State = {
   agencies: Agency[];
@@ -39,7 +41,7 @@ function normalize(value: unknown): State {
 type Store = State & {
   hydrated: boolean;
   online: boolean;
-  joinAgency: (code: string) => JoinResult;
+  joinAgency: (code: string, category?: string) => JoinResult;
   leaveAgency: (agencyId: string) => void;
   moveAgency: (agencyId: string, direction: -1 | 1) => void;
 };
@@ -95,7 +97,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   // Redeems an invitation code. A real app needs the server for this; here it checks the sample codes.
   const joinAgency: Store['joinAgency'] = useCallback(
-    (raw) => {
+    (raw, chosen) => {
       const code = raw.trim().toUpperCase();
       if (!code) return { ok: false, error: 'Enter the invitation code from your agency.' };
       const invitation = invitations.find((item) => item.code === code);
@@ -107,8 +109,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       const current = ref.current;
       if (current.agencies.some((agency) => agency.id === invitation.agency.id))
         return { ok: false, error: `You are already a member of ${invitation.agency.name}.` };
+      const category = invitation.category ?? chosen;
+      if (!category) return { ok: false, error: 'Choose your participant category.', needsCategory: true };
       const agency: Agency = {
         ...invitation.agency,
+        category,
         memberSince: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       };
       commit({

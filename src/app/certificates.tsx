@@ -4,7 +4,7 @@ import { StatusPill } from '@/components/bits';
 import { Card } from '@/components/ui';
 import { activities } from '@/data/mock';
 import { useStore } from '@/store/AppStore';
-import { pendingFeedback, useDemo } from '@/store/demo';
+import { certificateStatus, useDemo } from '@/store/demo';
 import { colors } from '@/theme';
 
 /** Certificate progress for every started activity, using the same sample progress as Plans & certs. */
@@ -22,9 +22,7 @@ export default function Certificates() {
       ) : (
         list.map((activity) => {
           const agency = agencies.find((item) => item.id === activity.agencyId);
-          const pending = pendingFeedback(demo, activity.id).length;
-          const planSubmitted = demo.reentry[activity.id]?.status === 'submitted';
-          const done = activity.status === 'Completed' && pending === 0 && planSubmitted;
+          const cert = certificateStatus(demo, activity);
 
           return (
             <Card key={activity.id} style={{ gap: 10 }}>
@@ -33,15 +31,20 @@ export default function Certificates() {
                   <Text style={styles.agency}>{agency?.short ?? 'Agency'}</Text>
                   <Text style={styles.title}>{activity.title}</Text>
                 </View>
-                <StatusPill label={done ? 'Requirements met' : 'In progress'} tone={done ? 'ok' : 'warn'} />
+                <StatusPill label={cert.state} tone={cert.state === 'Released' ? 'ok' : cert.state === 'Eligible' ? 'info' : 'muted'} />
               </View>
-              <Text style={styles.meta}>Session feedback · {pending ? `${pending} pending` : 'Complete'}</Text>
-              <Text style={styles.meta}>Reentry plan · {planSubmitted ? 'Submitted' : 'Not submitted'}</Text>
+              {cert.requirements.map((r) => (
+                <Text key={r.key} style={styles.meta}>
+                  {r.label} · {r.note}
+                </Text>
+              ))}
               <View style={styles.note}>
                 <Text style={styles.noteText}>
-                  {done
-                    ? 'Requirements are complete. The agency will release your certificate.'
-                    : 'Complete the requirements above to become eligible.'}
+                  {cert.state === 'Released'
+                    ? 'Your certificate has been released.'
+                    : cert.state === 'Eligible'
+                      ? 'Requirements are complete. The agency will release your certificate.'
+                      : 'Complete the requirements above to become eligible.'}
                 </Text>
               </View>
             </Card>

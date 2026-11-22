@@ -1,41 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/components/Text';
 import { useBrand } from '@/components/Brand';
-import { LinearGradient } from 'expo-linear-gradient';
-import { StatusPill } from '@/components/bits';
+import { BottomSheet, StatusPill } from '@/components/bits';
+import { ChecklistRows, FormOpener } from '@/components/forms';
 import { MaterialViewer } from '@/components/MaterialViewer';
-import { FeedbackSheet, ReentrySheet } from '@/components/sheets';
-import { Card, Chip, PressableScale } from '@/components/ui';
+import { Button, Card, Chip, PressableScale } from '@/components/ui';
 import type { Activity } from '@/data/mock';
 import {
+  allSessions,
   attendanceDays,
+  attendanceDone,
   attendanceHistory,
+  attendanceTotal,
+  certificateRules,
   days,
   materialGroups,
   materialTypes,
   nextSession,
   overview,
   SampleMaterial,
-  SampleSession,
-  submissionSessions,
 } from '@/data/sample';
-import { allSessions, demoActions, feedbackStatus, submittedFeedbackCount, useDemo } from '@/store/demo';
+import { certificateStatus, useDemo } from '@/store/demo';
 import { colors, radius, shadow } from '@/theme';
 
 export type TabName = 'Overview' | 'Sessions' | 'Materials' | 'Attendance' | 'Submissions';
-export type SubKey = 'feedback' | 'reentry' | 'photos';
-/** Switch to another tab (and optionally a Submissions sub-tab). */
-export type GoTo = (tab: TabName, sub?: SubKey) => void;
+/** The session a participant is looking at: its details, or the schedule with that session highlighted. */
+export type SessionFocus = { id: string; view: 'detail' | 'schedule' };
+/** Switch to another tab, optionally landing on a session or on one session's materials. */
+export type GoTo = (tab: TabName, opts?: { session?: SessionFocus; materials?: string }) => void;
 type Notify = (message: string) => void;
-
-const PHOTO_COLORS: [string, string][] = [
-  ['#A7F3D0', '#2965DD'],
-  ['#FDE68A', '#F97316'],
-  ['#BFDBFE', '#7C3AED'],
-  ['#FBCFE8', '#0891B2'],
-];
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <Card style={{ gap: 8 }}>
@@ -60,34 +55,34 @@ const Bullets = ({ items }: { items: string[] }) => {
 
 /* ------------------------------ Overview ------------------------------ */
 
-export function OverviewTab({ activity, goTo }: { activity: Activity; goTo: GoTo }) {
+export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo: GoTo; open: FormOpener }) {
   const brand = useBrand();
-  const demo = useDemo();
   const p = overview.progress;
-  const plan = demo.reentry[activity.id];
-  const photos = demo.photos[activity.id] ?? 0;
-  const feedbackDone = submittedFeedbackCount(demo, activity.id);
-
-  const action = (label: string, right: string, tone: 'warn' | 'muted' | 'info' | 'ok', onPress: () => void) => (
-    <PressableScale key={label} scaleTo={0.98} style={s.action} onPress={onPress}>
-      <Text style={s.actionText}>{label}</Text>
-      <StatusPill label={right} tone={tone} />
-      <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-    </PressableScale>
-  );
 
   return (
     <View style={{ gap: 12 }}>
-      <Card style={{ gap: 4, borderLeftWidth: 4, borderLeftColor: brand.primary }}>
-        <Text style={s.kicker}>Next session</Text>
-        <Text style={s.h}>{nextSession.title}</Text>
-        <Text style={s.meta}>
-          {nextSession.date} · {nextSession.range}
-        </Text>
-        <Text style={s.meta}>{nextSession.venue}</Text>
-        <Text style={[s.meta, { color: brand.primary, fontWeight: '600' }]}>{nextSession.speaker}</Text>
-      </Card>
+      {/* Opens the session's details, where its materials and schedule are. */}
+      <PressableScale
+        scaleTo={0.98}
+        accessibilityRole="button"
+        accessibilityLabel={`Next session: ${nextSession.title}`}
+        onPress={() => goTo('Sessions', { session: { id: nextSession.id, view: 'detail' } })}
+      >
+        <Card style={{ gap: 4, borderLeftWidth: 4, borderLeftColor: brand.primary }}>
+          <View style={s.between}>
+            <Text style={s.kicker}>NEXT SESSION</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </View>
+          <Text style={s.h}>{nextSession.title}</Text>
+          <Text style={s.meta}>
+            {nextSession.date} · {nextSession.range}
+          </Text>
+          <Text style={s.meta}>{nextSession.venue}</Text>
+          <Text style={[s.meta, { color: brand.primary, fontWeight: '600' }]}>{nextSession.speaker}</Text>
+        </Card>
+      </PressableScale>
 
+      {/* One card: the progress bar and what has been completed so far. */}
       <Card style={{ gap: 8 }}>
         <View style={s.between}>
           <Text style={s.h}>Activity progress</Text>
@@ -99,17 +94,8 @@ export function OverviewTab({ activity, goTo }: { activity: Activity; goTo: GoTo
           <View style={[s.fill, { width: `${p.pct}%`, backgroundColor: brand.primary }]} />
         </View>
         <Text style={s.meta}>{p.note}</Text>
-      </Card>
-
-      <Card style={{ paddingVertical: 4 }}>
-        {action('Submit session feedback', `${feedbackDone} of 3`, feedbackDone === 3 ? 'ok' : 'warn', () => goTo('Submissions', 'feedback'))}
-        {action(
-          `${activity.agencyId === 'prri' ? 'PRRI ' : ''}Reentry plan`,
-          plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft') : 'Pending',
-          plan?.status === 'submitted' ? 'ok' : plan ? 'info' : 'warn',
-          () => goTo('Submissions', 'reentry'),
-        )}
-        {action('Output photos', photos > 0 ? `${photos}` : 'Optional', photos > 0 ? 'info' : 'muted', () => goTo('Submissions', 'photos'))}
+        <View style={s.divider} />
+        <ChecklistRows activity={activity} open={open} locked={activity.status !== 'Completed'} />
       </Card>
 
       <Section title="About this activity">
@@ -163,113 +149,106 @@ export function OverviewTab({ activity, goTo }: { activity: Activity; goTo: GoTo
 /* ------------------------------ Sessions ------------------------------ */
 
 const statusTone = { Completed: 'ok', 'In progress': 'warn', 'Up next': 'info', Scheduled: 'muted' } as const;
-const feedbackText = { Submitted: 'Feedback submitted', Pending: 'Feedback pending', 'Not open': 'Feedback not open' } as const;
 
-export function SessionsTab({ activityId, goTo, notify }: { activityId: string; goTo: GoTo; notify: Notify }) {
+export function SessionsTab({ focus, onFocus, goTo, notify }: {
+  focus: SessionFocus | null;
+  onFocus: (focus: SessionFocus | null) => void;
+  goTo: GoTo;
+  notify: Notify;
+}) {
   const brand = useBrand();
-  const demo = useDemo();
-  const [open, setOpen] = useState<SampleSession | null>(null);
-  const [rating, setRating] = useState(false);
-  const status = (sess: SampleSession) => feedbackStatus(demo, activityId, sess);
+  const session = focus ? allSessions.find((x) => x.id === focus.id) : undefined;
 
-  if (open) {
-    const fb = status(open);
-    const existing = demo.feedback[`${activityId}/${open.id}`] ?? (open.feedback === 'Submitted' ? { rating: 5, comment: '' } : undefined);
+  if (session && focus?.view === 'detail') {
     return (
       <View style={{ gap: 12 }}>
-        <PressableScale scaleTo={0.96} onPress={() => setOpen(null)} style={s.backRow}>
+        <PressableScale scaleTo={0.96} onPress={() => onFocus(null)} style={s.backRow}>
           <Ionicons name="chevron-back" size={16} color={brand.primary} />
           <Text style={[s.meta, { color: brand.primary, fontWeight: '700' }]}>All sessions</Text>
         </PressableScale>
         <Card style={{ gap: 10 }}>
           <View style={s.between}>
             <Text style={[s.kicker, { color: brand.primary }]}>
-              {open.kind.charAt(0) + open.kind.slice(1).toLowerCase()} · Day {open.date.includes('17') ? 1 : open.date.includes('18') ? 2 : 3}
+              {session.kind.charAt(0) + session.kind.slice(1).toLowerCase()} · Day {session.date.includes('17') ? 1 : session.date.includes('18') ? 2 : 3}
             </Text>
-            <StatusPill label={open.status} tone={statusTone[open.status]} />
+            <StatusPill label={session.status} tone={statusTone[session.status]} />
           </View>
-          <Text style={s.title}>{open.title}</Text>
+          <Text style={s.title}>{session.title}</Text>
           <Text style={s.meta}>
-            {open.files} files · {feedbackText[fb]}
+            {session.files} file{session.files === 1 ? '' : 's'}
           </Text>
           <View style={s.grid2}>
-            <Field label="DATE" value={open.date} />
-            <Field label="TIME" value={open.range} />
-            <Field label="RESOURCE PERSON" value={open.speaker} />
-            <Field label="VENUE / ROOM" value={open.venue} />
+            <Field label="DATE" value={session.date} />
+            <Field label="TIME" value={session.range} />
+            <Field label="RESOURCE PERSON" value={session.speaker} />
+            <Field label="VENUE / ROOM" value={session.venue} />
           </View>
-          <Text style={s.body}>{open.about}</Text>
+          <Text style={s.body}>{session.about}</Text>
         </Card>
+
         <Card style={{ gap: 8 }}>
           <Text style={s.h}>Session materials</Text>
           <Text style={s.meta}>
-            {open.files > 0 ? `${open.files} files uploaded for this session.` : 'No materials uploaded for this session yet.'}
+            {session.files > 0 ? `${session.files} file${session.files === 1 ? '' : 's'} uploaded for this session.` : 'No materials uploaded for this session yet.'}
           </Text>
           <Pill
             label="View Session Materials"
-            onPress={() => (open.files > 0 ? goTo('Materials') : notify('No materials uploaded for this session yet'))}
+            onPress={() => (session.files > 0 ? goTo('Materials', { materials: session.title }) : notify('No materials uploaded for this session yet'))}
           />
-        </Card>
-        <Card style={{ gap: 8 }}>
-          <Pill
-            label={fb === 'Submitted' ? 'View my feedback' : 'Submit Session Feedback'}
-            primary={fb !== 'Submitted'}
-            onPress={() => (fb === 'Not open' ? notify('Feedback opens once this session has started') : setRating(true))}
-          />
-          <Text style={[s.meta, { textAlign: 'center' }]}>
-            {fb === 'Not open'
-              ? 'Feedback opens once this session has started.'
-              : fb === 'Submitted'
-                ? 'Thanks! Your feedback for this session was submitted.'
-                : 'You can submit feedback for this session.'}
-          </Text>
         </Card>
 
-        <FeedbackSheet
-          visible={rating}
-          onClose={() => setRating(false)}
-          sessionTitle={open.title}
-          existing={fb === 'Submitted' ? existing : undefined}
-          onSubmit={(r, c) => {
-            demoActions.submitFeedback(activityId, open.id, r, c);
-            notify('Feedback submitted. Thank you!');
-          }}
-        />
+        <Card style={{ gap: 8 }}>
+          <Text style={s.h}>Session schedule</Text>
+          <Text style={s.meta}>See where this session fits in the activity schedule.</Text>
+          <Pill label="View Session Schedule" onPress={() => onFocus({ id: session.id, view: 'schedule' })} />
+        </Card>
+
       </View>
     );
   }
 
   return (
     <View style={{ gap: 14 }}>
+      {session && (
+        <PressableScale scaleTo={0.96} onPress={() => onFocus({ id: session.id, view: 'detail' })} style={s.backRow}>
+          <Ionicons name="chevron-back" size={16} color={brand.primary} />
+          <Text style={[s.meta, { color: brand.primary, fontWeight: '700' }]}>Back to session details</Text>
+        </PressableScale>
+      )}
       {days.map((day) => (
         <View key={day.label} style={{ gap: 10 }}>
           <View style={s.dayHead}>
             <Text style={s.dayLabel}>{day.label}</Text>
             {day.today && <StatusPill label="Today" tone="warn" />}
           </View>
-          {day.sessions.map((sess) => (
-            <PressableScale key={sess.id} scaleTo={0.98} onPress={() => setOpen(sess)} style={s.sessionRow}>
-              <View style={s.timeCol}>
-                <Text style={s.time}>{sess.time}</Text>
-                <Text style={s.timeAp}>{sess.period}</Text>
-              </View>
-              <Card style={{ flex: 1, gap: 4 }}>
-                <Text style={[s.kicker, { color: brand.primary }]}>{sess.kind}</Text>
-                <View style={s.between}>
-                  <Text style={[s.name, { flex: 1 }]}>{sess.title}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          {day.sessions.map((sess) => {
+            const picked = sess.id === session?.id;
+            return (
+              <PressableScale key={sess.id} scaleTo={0.98} onPress={() => onFocus({ id: sess.id, view: 'detail' })} style={s.sessionRow}>
+                <View style={s.timeCol}>
+                  <Text style={[s.time, picked && { color: brand.primary }]}>{sess.time}</Text>
+                  <Text style={s.timeAp}>{sess.period}</Text>
                 </View>
-                <Text style={s.meta}>{sess.speaker}</Text>
-                <View style={s.statusRow}>
-                  <StatusPill label={sess.status} tone={statusTone[sess.status]} />
-                  <Text style={s.meta}>
-                    {sess.files} file{sess.files === 1 ? '' : 's'}
-                  </Text>
-                </View>
-                <Text style={s.meta}>{feedbackText[status(sess)]}</Text>
-              </Card>
-            </PressableScale>
-          ))}
+                <Card style={[{ flex: 1, gap: 4 }, picked && { backgroundColor: brand.soft, borderWidth: 2, borderColor: brand.primary }]}>
+                  <View style={s.between}>
+                    <Text style={[s.kicker, { color: brand.primary }]}>{sess.kind}</Text>
+                    {picked && <StatusPill label="Selected session" tone="info" />}
+                  </View>
+                  <View style={s.between}>
+                    <Text style={[s.name, { flex: 1 }]}>{sess.title}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                  </View>
+                  <Text style={s.meta}>{sess.speaker}</Text>
+                  <View style={s.statusRow}>
+                    <StatusPill label={sess.status} tone={statusTone[sess.status]} />
+                    <Text style={s.meta}>
+                      {sess.files} file{sess.files === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                </Card>
+              </PressableScale>
+            );
+          })}
         </View>
       ))}
     </View>
@@ -309,18 +288,23 @@ const badgeColor: Record<string, [string, string]> = {
   LINK: ['#E2E8F0', '#475569'],
 };
 
-export function MaterialsTab({ notify }: { notify: Notify }) {
+export function MaterialsTab({ notify, session: initialSession = '' }: { notify: Notify; session?: string }) {
   const brand = useBrand();
   const [viewing, setViewing] = useState<SampleMaterial | null>(null);
   const [query, setQuery] = useState('');
+  const [filtering, setFiltering] = useState(false);
+  // Filters live in the sheet behind the filter button: a session name (empty = all sessions) and a file type.
+  const [session, setSession] = useState(initialSession);
   const [type, setType] = useState<(typeof materialTypes)[number]>('All types');
   const [offline, setOffline] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(materialGroups.flatMap((g) => g.items).map((m) => [m.id, !!m.offline])),
   );
+  const active = (session.trim() ? 1 : 0) + (type !== 'All types' ? 1 : 0);
 
   const groups = useMemo(
     () =>
       materialGroups
+        .filter((g) => g.title.toLowerCase().includes(session.trim().toLowerCase()))
         .map((g) => ({
           ...g,
           items: g.items.filter(
@@ -328,7 +312,7 @@ export function MaterialsTab({ notify }: { notify: Notify }) {
           ),
         }))
         .filter((g) => g.items.length > 0),
-    [query, type],
+    [query, session, type],
   );
 
   return (
@@ -342,18 +326,10 @@ export function MaterialsTab({ notify }: { notify: Notify }) {
           placeholderTextColor={colors.muted}
           style={s.searchInput}
         />
-      </View>
-
-      {/* Padding gives the chips' shadow room inside the clipping scroll view. */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: -10 }} contentContainerStyle={{ gap: 8, paddingBottom: 18, paddingHorizontal: 2 }}>
-        {materialTypes.map((t) => (
-          <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
-        ))}
-      </ScrollView>
-
-      <View style={s.dropdown}>
-        <Text style={s.name}>All sessions</Text>
-        <Ionicons name="chevron-down" size={16} color={colors.muted} />
+        <PressableScale scaleTo={0.9} accessibilityRole="button" accessibilityLabel="Filter materials" onPress={() => setFiltering(true)} style={s.filterBtn}>
+          <Ionicons name="options-outline" size={20} color={active ? brand.primary : colors.muted} />
+          {active > 0 && <View style={[s.filterDot, { backgroundColor: brand.primary }]} />}
+        </PressableScale>
       </View>
 
       {groups.length === 0 && <Text style={s.empty}>No materials match your search.</Text>}
@@ -409,6 +385,43 @@ export function MaterialsTab({ notify }: { notify: Notify }) {
         </View>
       ))}
 
+      <BottomSheet visible={filtering} onClose={() => setFiltering(false)} title="Filter materials">
+        <Text style={s.kicker}>SESSION</Text>
+        <View style={s.sessionInput}>
+          <Ionicons name="search" size={16} color={colors.muted} />
+          <TextInput
+            value={session}
+            onChangeText={setSession}
+            placeholder="Type a session name"
+            placeholderTextColor={colors.muted}
+            style={s.searchInput}
+          />
+        </View>
+        <View style={s.chips}>
+          <Chip label="All sessions" active={!session.trim()} onPress={() => setSession('')} />
+        </View>
+
+        <Text style={[s.kicker, { marginTop: 4 }]}>FILE TYPE</Text>
+        <View style={s.chips}>
+          {materialTypes.map((t) => (
+            <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
+          ))}
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+          <Button
+            label="Reset"
+            variant="soft"
+            style={{ flex: 1 }}
+            onPress={() => {
+              setSession('');
+              setType('All types');
+            }}
+          />
+          <Button label="Show results" style={{ flex: 1 }} onPress={() => setFiltering(false)} />
+        </View>
+      </BottomSheet>
+
       <MaterialViewer
         material={viewing}
         onClose={() => setViewing(null)}
@@ -420,18 +433,27 @@ export function MaterialsTab({ notify }: { notify: Notify }) {
 
 /* ------------------------------ Attendance ------------------------------ */
 
-const attTone = { Present: 'ok', 'Not checked in': 'warn', 'Not yet open': 'muted' } as const;
+const attTone = { 'Checked in': 'ok', 'Checked out': 'info', 'Pending sync': 'warn', 'Not checked in': 'muted', 'Not yet open': 'muted' } as const;
 
 export function AttendanceTab({ title }: { title: string }) {
   const brand = useBrand();
+  const pending = attendanceHistory.filter((h) => !h.synced).length;
+  const pct = Math.round((attendanceDone / attendanceTotal) * 100);
   return (
     <View style={{ gap: 12 }}>
-      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.meta}>Attendance for</Text>
-          <Text style={s.h}>{title}</Text>
+      <Card style={{ gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.meta}>Attendance for</Text>
+            <Text style={s.h}>{title}</Text>
+          </View>
+          <Text style={[s.big, { color: brand.primary }]}>
+            {attendanceDone}/{attendanceTotal}
+          </Text>
         </View>
-        <Text style={[s.big, { color: brand.primary }]}>2/6</Text>
+        <Text style={s.meta}>
+          {pct}% so far. A certificate needs at least {certificateRules.minAttendance}%. Each day has four QR check points: morning in and out, afternoon in and out.
+        </Text>
       </Card>
 
       {attendanceDays.map((d) => (
@@ -462,13 +484,12 @@ export function AttendanceTab({ title }: { title: string }) {
               <Text style={s.name}>{h.title}</Text>
               <Text style={s.meta}>{h.when}</Text>
             </View>
-            <StatusPill label="Synced" tone="ok" />
+            <StatusPill label={h.synced ? 'Synced' : 'Pending sync'} tone={h.synced ? 'ok' : 'warn'} />
           </View>
         ))}
       </Card>
       <Text style={s.meta}>
-        Each day and session is stored once, so repeated syncs never create duplicate records. (0 items pending across all
-        submissions)
+        Each check point is stored once, so repeated syncs never create duplicate records. ({pending} {pending === 1 ? 'item' : 'items'} pending sync)
       </Text>
     </View>
   );
@@ -476,167 +497,52 @@ export function AttendanceTab({ title }: { title: string }) {
 
 /* ------------------------------ Submissions ------------------------------ */
 
-const subTone = { Submitted: 'ok', Pending: 'warn', 'Not open yet': 'muted' } as const;
+const stateTone = { 'Not eligible': 'muted', Eligible: 'info', Released: 'ok' } as const;
 
-export function SubmissionsTab({
-  activityId,
-  activityTitle,
-  sub,
-  onSub,
-  notify,
-}: {
-  activityId: string;
-  activityTitle: string;
-  sub: SubKey;
-  onSub: (k: SubKey) => void;
-  notify: Notify;
-}) {
+export function SubmissionsTab({ activity, open }: { activity: Activity; open: FormOpener }) {
   const brand = useBrand();
   const demo = useDemo();
-  const [rating, setRating] = useState<SampleSession | null>(null);
-  const [writing, setWriting] = useState(false);
-
-  const feedbackDone = submittedFeedbackCount(demo, activityId);
-  const plan = demo.reentry[activityId];
-  const photos = demo.photos[activityId] ?? 0;
-
-  const tiles = [
-    { key: 'feedback', label: 'Session feedback', value: `${feedbackDone}/3` },
-    { key: 'reentry', label: 'Reentry plan', value: plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft') : 'Pending' },
-    { key: 'photos', label: 'Output photos', value: `${photos}` },
-  ] as const;
-
-  const ratingExisting = rating
-    ? (demo.feedback[`${activityId}/${rating.id}`] ?? (rating.feedback === 'Submitted' ? { rating: 5, comment: '' } : undefined))
-    : undefined;
+  const completed = activity.status === 'Completed';
+  const cert = certificateStatus(demo, activity);
 
   return (
     <View style={{ gap: 12 }}>
-      <View style={s.subTiles}>
-        {tiles.map((t) => {
-          const on = sub === t.key;
-          return (
-            <PressableScale
-              key={t.key}
-              scaleTo={0.96}
-              onPress={() => onSub(t.key)}
-              style={[s.subTile, on && { backgroundColor: brand.primary }]}
-            >
-              <Text style={[s.subLabel, on && { color: '#fff' }]}>{t.label}</Text>
-              <Text style={[s.subValue, { color: on ? '#fff' : brand.primary }]}>{t.value}</Text>
-            </PressableScale>
-          );
-        })}
-      </View>
+      <Card style={{ gap: 4 }}>
+        <View style={s.between}>
+          <Text style={s.h}>Submissions</Text>
+          <StatusPill label={completed ? 'Open' : 'Opens after the activity'} tone={completed ? 'ok' : 'muted'} />
+        </View>
+        <Text style={s.meta}>
+          {completed
+            ? 'The activity is complete. Finish your feedback, reentry plan and output below.'
+            : 'Feedback, the reentry plan and output submissions open once this activity is completed.'}
+        </Text>
+        <ChecklistRows activity={activity} open={open} locked={!completed} />
+      </Card>
 
-      {sub === 'feedback' && (
-        <>
-          <Text style={s.body}>Choose a session to evaluate. Each session has its own feedback.</Text>
-          {submissionSessions.map((x, i) => {
-            const sess = allSessions[i];
-            const state = x.state === 'Not open yet' ? 'Not open yet' : feedbackStatus(demo, activityId, sess) === 'Submitted' ? 'Submitted' : 'Pending';
-            return (
-              <PressableScale
-                key={x.title}
-                scaleTo={0.98}
-                onPress={() => (state === 'Not open yet' ? notify('Feedback opens once this session has started') : setRating(sess))}
-              >
-                <Card style={s.between}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[s.kicker, { color: brand.primary }]}>
-                      {x.kind} · {x.day}
-                    </Text>
-                    <Text style={s.name}>{x.title}</Text>
-                  </View>
-                  <StatusPill label={state} tone={subTone[state]} />
-                  {state !== 'Not open yet' && <Ionicons name="chevron-forward" size={16} color={colors.muted} />}
-                </Card>
-              </PressableScale>
-            );
-          })}
-        </>
-      )}
-
-      {sub === 'reentry' && (
-        <Card style={{ gap: 8 }}>
-          <View style={s.between}>
-            <Text style={s.h}>Reentry plan</Text>
-            <StatusPill
-              label={plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft') : 'Pending'}
-              tone={plan?.status === 'submitted' ? 'ok' : plan ? 'info' : 'warn'}
-            />
-          </View>
-          <Text style={s.body}>
-            {plan
-              ? plan.text
-              : 'Describe how you’ll apply your learning. Prepare now; submit after the activity ends.'}
-          </Text>
-          <Pill
-            label={plan ? (plan.status === 'submitted' ? 'View plan' : 'Continue draft') : 'Write plan'}
-            onPress={() => setWriting(true)}
-          />
-        </Card>
-      )}
-
-      {sub === 'photos' && (
-        <>
-          {photos === 0 ? (
-            <Card style={{ alignItems: 'center', gap: 8, paddingVertical: 24 }}>
-              <Ionicons name="images-outline" size={32} color={colors.muted} />
-              <Text style={s.name}>No output photos yet</Text>
-              <Text style={[s.meta, { textAlign: 'center' }]}>Optional. Share photos of what you made or practised.</Text>
-            </Card>
-          ) : (
-            <View style={s.photoGrid}>
-              {Array.from({ length: photos }, (_, i) => (
-                <LinearGradient
-                  key={i}
-                  colors={PHOTO_COLORS[i % PHOTO_COLORS.length]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={s.photo}
-                >
-                  <Ionicons name="image-outline" size={26} color="rgba(255,255,255,0.9)" />
-                  <Text style={s.photoText}>Sample photo {i + 1}</Text>
-                </LinearGradient>
-              ))}
+      <Card style={{ gap: 8 }}>
+        <View style={s.between}>
+          <Text style={s.h}>Certificate</Text>
+          <StatusPill label={cert.state} tone={stateTone[cert.state]} />
+        </View>
+        {cert.requirements.map((r) => (
+          <View key={r.key} style={s.statusRow}>
+            <Ionicons name={r.ok ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={r.ok ? brand.primary : colors.icon} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>{r.label}</Text>
+              <Text style={s.meta}>{r.note}</Text>
             </View>
-          )}
-          <Pill
-            label="Add photo"
-            primary={photos === 0}
-            onPress={() => {
-              demoActions.addPhoto(activityId);
-              notify('Sample photo added');
-            }}
-          />
-        </>
-      )}
-
-      <FeedbackSheet
-        visible={rating !== null}
-        onClose={() => setRating(null)}
-        sessionTitle={rating?.title ?? ''}
-        existing={rating && feedbackStatus(demo, activityId, rating) === 'Submitted' ? ratingExisting : undefined}
-        onSubmit={(r, c) => {
-          if (rating) demoActions.submitFeedback(activityId, rating.id, r, c);
-          notify('Feedback submitted. Thank you!');
-        }}
-      />
-      <ReentrySheet
-        visible={writing}
-        onClose={() => setWriting(false)}
-        activityTitle={activityTitle}
-        existing={plan}
-        onSave={(text, submit) => {
-          demoActions.saveReentry(activityId, text, submit);
-          notify(submit ? 'Reentry plan submitted' : 'Draft saved');
-        }}
-      />
+          </View>
+        ))}
+        <Text style={s.meta}>
+          {certificateRules.release === 'Automatic'
+            ? 'The certificate is released automatically once every requirement is met.'
+            : 'The organization releases the certificate after you meet every requirement.'}
+        </Text>
+      </Card>
     </View>
   );
 }
-
 const s = StyleSheet.create({
   h: { fontSize: 14, fontWeight: '700', color: colors.text },
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
@@ -651,8 +557,7 @@ const s = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
   track: { height: 8, borderRadius: 4, overflow: 'hidden' },
   fill: { height: 8, borderRadius: 4 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48 },
-  actionText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 4 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 14, fontWeight: '700' },
@@ -668,13 +573,13 @@ const s = StyleSheet.create({
   pillBtnText: { fontSize: 14, fontWeight: '600' },
   search: {
     flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderRadius: radius.pill,
-    paddingHorizontal: 14, backgroundColor: '#fff', ...shadow,
+    paddingLeft: 14, paddingRight: 6, backgroundColor: '#fff', ...shadow,
   },
   searchInput: { flex: 1, fontSize: 14, color: colors.text },
-  dropdown: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44,
-    borderRadius: radius.md, paddingHorizontal: 14, backgroundColor: '#fff', ...shadow,
-  },
+  filterBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  filterDot: { position: 'absolute', top: 7, right: 7, width: 8, height: 8, borderRadius: 4, borderWidth: 1.5, borderColor: '#fff' },
+  sessionInput: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
   count: { minWidth: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   countText: { fontSize: 12, fontWeight: '700' },
   fileBadge: { width: 44, height: 52, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
@@ -684,12 +589,5 @@ const s = StyleSheet.create({
   fileBtnText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   attRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   attBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  subTiles: { flexDirection: 'row', gap: 8 },
-  subTile: { flex: 1, minHeight: 64, borderRadius: radius.md, backgroundColor: '#fff', padding: 10, gap: 4, justifyContent: 'center', ...shadow },
-  subLabel: { fontSize: 12, color: colors.muted, fontWeight: '600' },
-  subValue: { fontSize: 16, fontWeight: '700' },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 24 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  photo: { width: '48%', aspectRatio: 1, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  photoText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 });

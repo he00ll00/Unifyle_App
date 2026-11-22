@@ -56,15 +56,7 @@ export default function OrgPage() {
         </View>
 
         <View style={styles.infoRow}>
-          <View style={styles.infoText}>
-            <Text style={styles.name}>{agency.name}</Text>
-            <Text style={styles.handle}>
-              @{agency.short.toLowerCase()} · {orgAbout.type}
-            </Text>
-            <Text style={styles.handle}>{orgAbout.subscribers}</Text>
-          </View>
-
-          {/* The organization's logo, large, directly above the subscribe button. */}
+          {/* The organization's logo, large, directly above the subscribe button, on the left. */}
           <View style={styles.logoCol}>
             <View style={styles.badgeRing} accessible accessibilityLabel={`${agency.name} logo`}>
               <View style={[styles.badge, { backgroundColor: agency.logoColor ?? brand.dark }]}>
@@ -82,6 +74,14 @@ export default function OrgPage() {
                 {subscribed ? 'Subscribed' : 'Subscribe'}
               </Text>
             </PressableScale>
+          </View>
+
+          <View style={styles.infoText}>
+            <Text style={styles.name}>{agency.name}</Text>
+            <Text style={styles.handle}>
+              @{agency.short.toLowerCase()} · {orgAbout.type}
+            </Text>
+            <Text style={styles.handle}>{orgAbout.subscribers}</Text>
           </View>
         </View>
       </LinearGradient>

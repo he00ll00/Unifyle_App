@@ -8,6 +8,8 @@ export type Agency = {
   role: string;
   region: string;
   memberSince: string;
+  /** Participant category set by the invitation or chosen when joining (participant_category). */
+  category?: string;
   /** Agency brand colour (TMIS "Agency Branding"). Must keep white text readable. */
   brand: string;
   /** Background of the agency's round logo badge, if it differs from the brand colour. */
@@ -29,6 +31,10 @@ export type Activity = {
   progress: string;
   /** First day of the activity (ISO date). */
   start: string;
+  /** Code that registers a participant for the activity (activity.join_code). Upcoming activities only. */
+  joinCode?: string;
+  /** Participant limit (activity.max_participants) and how many are registered. */
+  capacity?: { max: number; taken: number };
 };
 
 export const user = {
@@ -85,11 +91,14 @@ export const agencies: Agency[] = [
   },
 ];
 
-// Mirrors the `invitation` table (agency_id, code, role, expires_at, max_uses).
+// Mirrors the `invitation` table (agency_id, code, category_id, expires_at, max_uses).
+// Codes look like the admin ones: AGENCY-XXXX.
 // Replace with a server call; the server must enforce expiry and max uses.
 export type Invitation = {
   code: string;
   agency: Agency;
+  /** Preset participant category. When missing, the participant picks one while joining. */
+  category?: string;
   expiresAt?: string;
   maxUses?: number;
   uses: number;
@@ -97,7 +106,7 @@ export type Invitation = {
 
 export const invitations: Invitation[] = [
   {
-    code: 'DA-RFO9-2025',
+    code: 'DARFO9-4K7Q',
     agency: {
       id: 'da9',
       name: 'Department of Agriculture – Region IX',
@@ -108,10 +117,11 @@ export const invitations: Invitation[] = [
       brand: '#4D7C0F', // olive green
       cardEnd: '#9BFF2E',
     },
+    category: 'Farmer',
     uses: 0,
   },
   {
-    code: 'WMSU-EXT-01',
+    code: 'WMSU-3XT1',
     agency: {
       id: 'wmsu',
       name: 'WMSU Extension Office',
@@ -125,7 +135,7 @@ export const invitations: Invitation[] = [
     uses: 0,
   },
   {
-    code: 'DOST-IX-2025',
+    code: 'DOST9-8M2P',
     agency: {
       id: 'dost9',
       name: 'DOST Region IX Science and Technology Office',
@@ -139,7 +149,7 @@ export const invitations: Invitation[] = [
     uses: 0,
   },
   {
-    code: 'ATI-RTC9',
+    code: 'ATI9-5R6D',
     agency: {
       id: 'ati9',
       name: 'ATI Regional Training Center IX',
@@ -153,7 +163,7 @@ export const invitations: Invitation[] = [
     uses: 0,
   },
   {
-    code: 'OLD-2024',
+    code: 'OLD-0001',
     agency: {
       id: 'old',
       name: 'Expired Sample Agency',
@@ -203,6 +213,8 @@ export const activities: Activity[] = [
     venue: 'PRRI Training Center, Zamboanga Sibugay',
     status: 'Upcoming',
     progress: 'Starts July 1',
+    joinCode: 'PRRI-BW01',
+    capacity: { max: 40, taken: 28 },
   },
   {
     id: 'latex-quality',
@@ -237,8 +249,10 @@ export const activities: Activity[] = [
     venue: 'MAES Office, Ipil',
     status: 'Upcoming',
     progress: 'Starts August 12',
+    joinCode: 'MAES-CB02',
+    capacity: { max: 30, taken: 12 },
   },
-  // ---- DA Region IX (join code DA-RFO9-2025) ----
+  // ---- DA Region IX (join code DARFO9-4K7Q) ----
   {
     id: 'da-ipm',
     start: '2025-06-17',
@@ -272,6 +286,8 @@ export const activities: Activity[] = [
     venue: 'PCA Zamboanga Office, Zamboanga City',
     status: 'Upcoming',
     progress: 'Starts July 22',
+    joinCode: 'PCA-CP03',
+    capacity: { max: 60, taken: 41 },
   },
   // ---- BFAR ----
   {
@@ -296,7 +312,7 @@ export const activities: Activity[] = [
     status: 'Completed',
     progress: 'Completed · May 13',
   },
-  // ---- DOST Region IX (join code DOST-IX-2025) ----
+  // ---- DOST Region IX (join code DOST9-8M2P) ----
   {
     id: 'dost-smart-farming',
     start: '2025-06-17',
@@ -318,8 +334,10 @@ export const activities: Activity[] = [
     venue: 'DOST-IX Regional Office, Zamboanga City',
     status: 'Upcoming',
     progress: 'Starts August 5',
+    joinCode: 'DOST9-FP04',
+    capacity: { max: 25, taken: 25 },
   },
-  // ---- ATI RTC IX (join code ATI-RTC9) ----
+  // ---- ATI RTC IX (join code ATI9-5R6D) ----
   {
     id: 'ati-learning-site',
     start: '2025-06-17',
@@ -341,8 +359,10 @@ export const activities: Activity[] = [
     venue: 'ATI-RTC9, Ipil',
     status: 'Upcoming',
     progress: 'Starts July 15',
+    joinCode: 'ATI9-AE05',
+    capacity: { max: 35, taken: 9 },
   },
-  // ---- WMSU Extension (join code WMSU-EXT-01) ----
+  // ---- WMSU Extension (join code WMSU-3XT1) ----
   {
     id: 'wmsu-digital',
     start: '2025-06-17',
@@ -362,5 +382,8 @@ export function dateParts(a: Activity) {
   const [, month, day] = a.start.split('-').map(Number);
   return { month: MONTHS[month - 1], day: String(day) };
 }
+
+/** Ongoing and completed activities are already registered; upcoming ones need the activity code. */
+export const isRegistered = (a: Activity, joined: Record<string, true>) => a.status !== 'Upcoming' || !!joined[a.id];
 
 export const activitiesOf = (agencyId: string) => activities.filter((a) => a.agencyId === agencyId);
