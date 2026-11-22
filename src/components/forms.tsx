@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ReactNode, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { KeyboardAvoiding } from '@/components/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBrand } from '@/components/Brand';
 import { StatusPill } from '@/components/bits';
@@ -20,7 +21,7 @@ function FormModal({ visible, onClose, title, children, footer }: { visible: boo
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoiding style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.bar, { paddingTop: insets.top + 8 }]}>
           <PressableScale accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.barBtn}>
             <Ionicons name="close" size={24} color={colors.text} />
@@ -32,7 +33,7 @@ function FormModal({ visible, onClose, title, children, footer }: { visible: boo
           {children}
         </ScrollView>
         {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>{footer}</View> : null}
-      </KeyboardAvoidingView>
+      </KeyboardAvoiding>
     </Modal>
   );
 }

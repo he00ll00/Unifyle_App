@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoiding } from '@/components/keyboard';
 import { Text, TextInput } from '@/components/Text';
 import { Button, Chip } from '@/components/ui';
 import { participantCategories } from '@/data/sample';
@@ -46,7 +47,7 @@ export function JoinOrgModal({ visible, onClose }: { visible: boolean; onClose: 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
       <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close" />
-      <KeyboardAvoidingView
+      <KeyboardAvoiding
         pointerEvents="box-none"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.layer}
@@ -98,7 +99,7 @@ export function JoinOrgModal({ visible, onClose }: { visible: boolean; onClose: 
             </>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoiding>
     </Modal>
   );
 }

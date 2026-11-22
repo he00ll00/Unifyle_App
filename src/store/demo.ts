@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { activities, Activity, findAgency, user } from '@/data/mock';
-import { attendanceDone, attendanceTotal, certificateRules, materialGroups, NotificationItem, notificationItems, OutputKind } from '@/data/sample';
+import { attendanceDone, attendanceTotal, certificateRules, materialGroups, NotificationItem, notificationItems, notifications as membershipNotices, OutputKind } from '@/data/sample';
 
 /**
  * Front-end-only demo state, so buttons show believable results while you click around
@@ -141,12 +141,35 @@ export function notificationsFor(demo: DemoState, agencyIds: string[]): Notifica
   const items = notificationItems
     .filter((n) => agencyIds.includes(n.link?.agencyId ?? ''))
     .map((n) => ({ ...n, unread: !demo.read[n.id] }));
-  return [...released, ...items];
+  // Invitations and lost access are answered on the Workspaces page; these rows only point there.
+  const membership: NotificationRow[] = [];
+  if (demo.invitation === 'pending') {
+    membership.push({
+      id: 'invite-dabar',
+      agencyShort: membershipNotices.pending.short,
+      title: `Invitation from ${membershipNotices.pending.short}`,
+      body: `${membershipNotices.pending.by}. Open Workspaces to accept or decline.`,
+      when: 'Today',
+      icon: 'mail-unread-outline',
+      to: '/workspaces',
+      unread: !demo.read['invite-dabar'],
+    });
+  }
+  membership.push({
+    id: 'revoked-lhcb',
+    agencyShort: membershipNotices.revoked.short,
+    title: 'Access removed',
+    body: `${membershipNotices.revoked.name} removed your access. ${membershipNotices.revoked.when}.`,
+    when: 'May 28',
+    icon: 'lock-closed-outline',
+    to: '/workspaces',
+    unread: !demo.read['revoked-lhcb'],
+  });
+  return [...membership.filter((m) => m.id.startsWith('invite')), ...released, ...items, ...membership.filter((m) => !m.id.startsWith('invite'))];
 }
 
-/** Unread updates plus a pending invitation, for the bell badge. */
-export const unreadCount = (demo: DemoState, agencyIds: string[]) =>
-  notificationsFor(demo, agencyIds).filter((n) => n.unread).length + (demo.invitation === 'pending' ? 1 : 0);
+/** Unread updates (a pending invitation is one of them), for the bell badge. */
+export const unreadCount = (demo: DemoState, agencyIds: string[]) => notificationsFor(demo, agencyIds).filter((n) => n.unread).length;
 export function useDemo() {
   return useSyncExternalStore(
     (cb) => {

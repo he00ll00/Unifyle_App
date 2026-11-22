@@ -1,16 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { ClipPath, Circle, Defs, Ellipse, LinearGradient, Path, Stop } from 'react-native-svg';
 import { BottomSheet } from '@/components/bits';
 import { JoinOrgModal } from '@/components/JoinOrgModal';
-import { PressableScale } from '@/components/ui';
+import { Button, PressableScale } from '@/components/ui';
 import { Agency, user } from '@/data/mock';
+import { notifications as membershipNotices } from '@/data/sample';
+import { useToast } from '@/components/sheets';
 import { useStore } from '@/store/AppStore';
-import { unreadCount, useDemo } from '@/store/demo';
+import { demoActions, unreadCount, useDemo } from '@/store/demo';
 import { colors, shadow } from '@/theme';
 
 // Values below come from the Figma frame "Workspace — Organizations".
@@ -76,6 +78,33 @@ function FolderCard({ agency, onPress, onMenu }: { agency: Agency; onPress: () =
   );
 }
 
+/** An invitation from an agency: answered here, not in Notifications. */
+function InvitationCard({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+  const n = membershipNotices.pending;
+  return (
+    <View style={styles.invite}>
+      <View style={styles.inviteHead}>
+        <View style={styles.inviteLogo}>
+          <Text style={styles.inviteLogoText}>{n.short}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.inviteKicker}>INVITATION</Text>
+          <Text style={styles.inviteTitle}>{n.name}</Text>
+          <Text style={styles.inviteMeta}>{n.by}</Text>
+          <Text style={styles.inviteMeta}>{n.expires}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button label="Accept" size="lg" style={{ flex: 1 }} onPress={onAccept} />
+        <Button label="Decline" size="lg" variant="soft" style={{ flex: 1 }} onPress={onDecline} />
+      </View>
+    </View>
+  );
+}
+
+// The "you have an invitation" pop-up shows once each time the app is opened
+let invitePopupShown = false;
+
 type MenuIcon = React.ComponentProps<typeof Ionicons>['name'];
 
 function MenuRow({ icon, label, onPress, danger, disabled }: { icon: MenuIcon; label: string; onPress: () => void; danger?: boolean; disabled?: boolean }) {
@@ -97,6 +126,14 @@ export default function Workspaces() {
   const demo = useDemo();
   const unread = unreadCount(demo, agencies.map((a) => a.id));
   const [menuFor, setMenuFor] = useState<Agency | null>(null);
+  const [noAccess, setNoAccess] = useState(false);
+  const [popup, setPopup] = useState(() => !invitePopupShown && demo.invitation === 'pending');
+  const { notify, toast } = useToast();
+  const revoked = membershipNotices.revoked;
+  const pending = membershipNotices.pending;
+  useEffect(() => {
+    invitePopupShown = true;
+  }, []);
   const menuIndex = menuFor ? agencies.findIndex((a) => a.id === menuFor.id) : -1;
   const list = useMemo(
     () => agencies.filter((a) => a.name.toLowerCase().includes(q.trim().toLowerCase())),
@@ -153,7 +190,48 @@ export default function Workspaces() {
             <Ionicons name="add" size={26} color={GRAY} />
           </PressableScale>
         </View>
+
+        {demo.invitation === 'pending' && (
+          <InvitationCard
+            onAccept={() => {
+              demoActions.answerInvitation('accepted');
+              notify(`You joined ${pending.short} (sample)`);
+            }}
+            onDecline={() => {
+              demoActions.answerInvitation('declined');
+              notify('Invitation declined');
+            }}
+          />
+        )}
+        {demo.invitation === 'accepted' && (
+          <View style={styles.joined}>
+            <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+            <Text style={styles.joinedText}>You joined {pending.name}. It will appear below once it is set up.</Text>
+          </View>
+        )}
+        <Text style={styles.sectionLabel} accessibilityRole="header">
+          My workspaces
+        </Text>
       </View>
+  );
+
+  // Access that was removed: kept at the bottom, greyed, so it is clear why it is not tappable like the others
+  const footer = (
+    <View style={{ paddingHorizontal: 15, marginTop: 12, gap: 10 }}>
+      <Text style={styles.sectionLabel} accessibilityRole="header">
+        No longer accessible
+      </Text>
+      <PressableScale scaleTo={0.98} accessibilityRole="button" accessibilityLabel={`${revoked.name}, access removed. Tap for details`} onPress={() => setNoAccess(true)} style={styles.locked}>
+        <View style={styles.lockedLogo}>
+          <Text style={styles.lockedLogoText}>{revoked.short}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.lockedTitle}>{revoked.name}</Text>
+          <Text style={styles.lockedMeta}>Access removed · {revoked.when.replace('Revoked ', '')}</Text>
+        </View>
+        <Ionicons name="lock-closed-outline" size={20} color={colors.muted} />
+      </PressableScale>
+    </View>
   );
 
   return (
@@ -220,7 +298,33 @@ export default function Workspaces() {
           />
         )}
         ListEmptyComponent={<Text style={styles.empty}>No workspaces match your search.</Text>}
+        ListFooterComponent={footer}
       />
+
+      <BottomSheet visible={noAccess} onClose={() => setNoAccess(false)} title={revoked.name} subtitle="Access removed">
+        <Text style={styles.sheetText}>
+          This agency removed your access on May 28, 2025. Your past attendance and certificates stay saved on your account, but you can’t see its activities or message its members.
+        </Text>
+        <Button label="Contact the agency" size="lg" onPress={() => { setNoAccess(false); notify('Message sent to the agency (sample)'); }} />
+        <Button label="Close" size="lg" variant="soft" onPress={() => setNoAccess(false)} />
+      </BottomSheet>
+
+      {/* Shown once when the app opens and an invitation is waiting */}
+      <Modal visible={popup && demo.invitation === 'pending'} transparent animationType="fade" onRequestClose={() => setPopup(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setPopup(false)} accessibilityLabel="Close" />
+        <View style={styles.popupLayer} pointerEvents="box-none">
+          <View style={styles.popup}>
+            <View style={styles.popupIcon}>
+              <Ionicons name="mail-unread-outline" size={30} color={colors.primary} />
+            </View>
+            <Text style={styles.popupTitle}>You have an invitation</Text>
+            <Text style={styles.popupText}>{pending.name} invited you to join their workspace.</Text>
+            <Button label="Join now" size="lg" onPress={() => { demoActions.answerInvitation('accepted'); setPopup(false); notify(`You joined ${pending.short} (sample)`); }} />
+            <Button label="Later" size="lg" variant="soft" onPress={() => setPopup(false)} />
+          </View>
+        </View>
+      </Modal>
+      {toast}
     </View>
   );
 }
@@ -259,4 +363,26 @@ const styles = StyleSheet.create({
   agency: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', lineHeight: 25, textAlign: 'left', alignSelf: 'flex-start', maxWidth: '68%' },
   meta: { color: '#FFFFFF', fontSize: 12, lineHeight: 18, textAlign: 'left', alignSelf: 'flex-start', maxWidth: '85%' },
   empty: { textAlign: 'center', color: GRAY, marginTop: 32 },
+  sectionLabel: { fontSize: 14, fontWeight: '600', color: colors.muted, marginLeft: 4, marginTop: 4, marginBottom: 4 },
+  invite: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 14, marginBottom: 16, borderWidth: 1.5, borderColor: colors.primarySoft, ...shadow },
+  inviteHead: { flexDirection: 'row', gap: 14 },
+  inviteLogo: { width: 52, height: 52, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  inviteLogoText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  inviteKicker: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: colors.warn },
+  inviteTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
+  inviteMeta: { fontSize: 14, color: colors.muted },
+  joined: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.successSoft, borderRadius: 14, padding: 14, marginBottom: 16 },
+  joinedText: { flex: 1, fontSize: 15, color: colors.success },
+  locked: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 16, padding: 14, opacity: 0.9, ...shadow },
+  lockedLogo: { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  lockedLogoText: { fontSize: 11, fontWeight: '700', color: colors.muted },
+  lockedTitle: { fontSize: 16, fontWeight: '600', color: colors.muted },
+  lockedMeta: { fontSize: 14, color: colors.danger },
+  sheetText: { fontSize: 15, lineHeight: 22, color: colors.muted },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(20,30,60,0.35)' },
+  popupLayer: { flex: 1, justifyContent: 'center', padding: 24 },
+  popup: { backgroundColor: '#fff', borderRadius: 24, padding: 24, gap: 12, alignItems: 'stretch' },
+  popupIcon: { alignSelf: 'center', width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  popupTitle: { fontSize: 22, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  popupText: { fontSize: 16, lineHeight: 23, color: colors.muted, textAlign: 'center', marginBottom: 6 },
 });

@@ -365,8 +365,10 @@ export type NotificationItem = {
   title: string;
   body: string;
   when: string;
-  icon: 'time-outline' | 'document-text-outline' | 'megaphone-outline' | 'chatbubble-ellipses-outline' | 'ribbon-outline';
+  icon: 'time-outline' | 'document-text-outline' | 'megaphone-outline' | 'chatbubble-ellipses-outline' | 'ribbon-outline' | 'mail-unread-outline' | 'lock-closed-outline';
   link?: { agencyId: string; activityId: string };
+  /** Opens a page of the app instead of an activity (for example the workspaces, where invitations are answered). */
+  to?: '/workspaces';
 };
 
 export const notificationItems: NotificationItem[] = [

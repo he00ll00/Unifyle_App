@@ -1,32 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AuthField } from '@/components/auth';
 import { BottomSheet } from '@/components/bits';
+import { Group, Row, SectionTitle } from '@/components/lists';
 import { useToast } from '@/components/sheets';
-import { Text, TextInput } from '@/components/Text';
-import { Button, Card, Chip } from '@/components/ui';
+import { Text } from '@/components/Text';
+import { Button, Chip } from '@/components/ui';
 import { user } from '@/data/mock';
 import { profileExtras } from '@/data/sample';
 import { useStore } from '@/store/AppStore';
-import { colors } from '@/theme';
+import { TEXT_SIZES, useSettings } from '@/store/Settings';
+import { colors, shadow } from '@/theme';
 
-type Icon = React.ComponentProps<typeof Ionicons>['name'];
+const initials = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
-function Item({ icon, label, danger, onPress }: { icon: Icon; label: string; danger?: boolean; onPress?: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} disabled={!onPress} style={[styles.item, !onPress && styles.disabledItem]}>
-      <Ionicons name={icon} size={18} color={danger ? colors.danger : colors.muted} />
-      <Text style={[styles.itemText, danger && { color: colors.danger, fontWeight: '600' }]}>{label}</Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-    </Pressable>
-  );
-}
-
+/**
+ * Profile: who you are at the top, then your account, your preferences and support, as grouped lists.
+ * Settings and Help are their own screens; editing your details and password open as sheets.
+ */
 export function ProfileView() {
   const { online } = useStore();
-  const [copied, setCopied] = useState(false);
-  const [sheet, setSheet] = useState<'profile' | 'password' | 'notifications' | null>(null);
+  const { textSize } = useSettings();
+  const [sheet, setSheet] = useState<'profile' | 'password' | null>(null);
   const [name, setName] = useState<string>(user.name);
   const [email, setEmail] = useState<string>(user.email);
   // Participant profile fields kept by the admin system (participant_profile).
@@ -34,9 +39,10 @@ export function ProfileView() {
   const [birthDate, setBirthDate] = useState(profileExtras.birthDate);
   const [province, setProvince] = useState(profileExtras.province);
   const [municipality, setMunicipality] = useState(profileExtras.municipality);
-  const [prefs, setPrefs] = useState({ reminders: true, updates: true, messages: false });
   const { notify, toast } = useToast();
-  const offline = !online;
+  const version = Constants.expoConfig?.version ?? '1.0.0';
+  const sizeLabel = TEXT_SIZES.find((t) => t.value === textSize)?.label ?? 'Default';
+
   const done = (message: string) => {
     setSheet(null);
     notify(message);
@@ -44,117 +50,92 @@ export function ProfileView() {
 
   return (
     <View style={{ flex: 1 }}>
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-      <Card style={styles.who}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{user.firstName[0]}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.meta}>{user.email}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Participant number ${user.participantId}. Tap to copy.`}
-          onPress={() => {
-            // Demo action: shows the confirmation only; nothing is copied yet.
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1400);
-          }}
-          style={styles.pid}
-        >
-          <Text style={styles.pidText}>{user.participantId}</Text>
-          <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={12} color={copied ? colors.primary : colors.muted} />
+      <ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
+        {/* Who you are */}
+        <Pressable accessibilityRole="button" accessibilityLabel={`${name}. Edit your profile`} onPress={() => setSheet('profile')} style={({ pressed }) => [s.who, pressed && { opacity: 0.92 }]}>
+          <View style={s.avatar}>
+            <Text style={s.avatarText}>{initials(name)}</Text>
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={s.name}>{name}</Text>
+            <Text style={s.email} numberOfLines={1}>
+              {email}
+            </Text>
+            <View style={s.status}>
+              <View style={[s.dot, { backgroundColor: online ? colors.success : colors.warn }]} />
+              <Text style={s.statusText}>{online ? 'Online · all saved' : 'Offline · 1 waiting to sync'}</Text>
+            </View>
+          </View>
+          <Ionicons name="create-outline" size={22} color={colors.primary} />
         </Pressable>
-      </Card>
 
-      <Text style={styles.section}>Account</Text>
-      <Card style={{ paddingVertical: 4 }}>
-        <Item icon="person-outline" label="Manage Profile" onPress={() => setSheet('profile')} />
-        <Item icon="lock-closed-outline" label="Password & Security" onPress={() => setSheet('password')} />
-        <Item icon="notifications-outline" label="Notifications" onPress={() => setSheet('notifications')} />
-      </Card>
+        <SectionTitle>Account</SectionTitle>
+        <Group>
+          <Row icon="person-outline" label="Manage Profile" onPress={() => setSheet('profile')} />
+          <Row icon="lock-closed-outline" label="Password & Security" onPress={() => setSheet('password')} />
+          <Row icon="ribbon-outline" label="My certificates" onPress={() => router.push('/certificates')} />
+        </Group>
 
-      <Card style={{ paddingVertical: 4 }}>
-        <Item icon="ribbon-outline" label="My certificates" onPress={() => router.push('/certificates')} />
-        <Item icon="log-out-outline" label="Sign out" danger onPress={() => router.replace('/login')} />
-      </Card>
+        <SectionTitle>Preferences</SectionTitle>
+        <Group>
+          <Row icon="text-outline" label="Text size" value={sizeLabel} onPress={() => router.push('/settings')} />
+          <Row icon="language-outline" label="Language" value="English" onPress={() => router.push('/settings')} />
+          <Row icon="notifications-outline" label="Notifications" onPress={() => router.push('/settings')} />
+        </Group>
 
-      <Card style={{ gap: 4 }}>
-        <Text style={styles.h}>Sync status</Text>
-        <Text style={[styles.status, { color: offline ? colors.warn : colors.primary }]}>
-          {offline ? 'Offline · 1 check-in waiting to sync' : 'Online · No records waiting to sync'}
-        </Text>
-        <Text style={styles.meta}>Saved on this device. Syncs automatically when online.</Text>
-      </Card>
-    </ScrollView>
+        <SectionTitle>Support</SectionTitle>
+        <Group>
+          <Row icon="help-circle-outline" label="Help center" onPress={() => router.push('/help')} />
+          <Row icon="information-circle-outline" label="About UniFyle" value={`Version ${version}`} />
+        </Group>
+
+        <Group>
+          <Row icon="log-out-outline" label="Sign out" danger onPress={() => router.replace('/login')} />
+        </Group>
+      </ScrollView>
 
       <BottomSheet visible={sheet === 'profile'} onClose={() => setSheet(null)} title="Manage Profile">
-        <TextInput value={name} onChangeText={setName} placeholder="Full name" placeholderTextColor={colors.icon} style={styles.input} />
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email"
-          placeholderTextColor={colors.icon}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          style={styles.input}
-        />
-        <View style={styles.sexRow}>
-          {['Male', 'Female', 'Prefer not to say'].map((o) => (
-            <Chip key={o} label={o} active={sex === o} onPress={() => setSex(o)} />
-          ))}
-        </View>
-        <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="Birth date" placeholderTextColor={colors.icon} style={styles.input} />
-        <TextInput value={province} onChangeText={setProvince} placeholder="Province" placeholderTextColor={colors.icon} style={styles.input} />
-        <TextInput value={municipality} onChangeText={setMunicipality} placeholder="Municipality" placeholderTextColor={colors.icon} style={styles.input} />
-        <Button label="Save changes" onPress={() => done('Profile updated (sample)')} />
+        <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: 16, paddingBottom: 8 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <AuthField label="Full name" value={name} onChangeText={setName} autoCapitalize="words" />
+          <AuthField label="Email address" value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" />
+          <View style={{ gap: 8 }}>
+            <Text style={s.groupLabel}>Sex</Text>
+            <View style={s.sexRow}>
+              {['Male', 'Female', 'Prefer not to say'].map((o) => (
+                <Chip key={o} label={o} active={sex === o} onPress={() => setSex(o)} />
+              ))}
+            </View>
+          </View>
+          <AuthField label="Birth date" value={birthDate} onChangeText={setBirthDate} hint="For example: March 14, 1990" />
+          <AuthField label="Province" value={province} onChangeText={setProvince} autoCapitalize="words" />
+          <AuthField label="Municipality or city" value={municipality} onChangeText={setMunicipality} autoCapitalize="words" />
+        </ScrollView>
+        <Button label="Save changes" size="lg" onPress={() => done('Profile updated (sample)')} />
       </BottomSheet>
 
       <BottomSheet visible={sheet === 'password'} onClose={() => setSheet(null)} title="Password & Security">
-        <TextInput placeholder="Current password" placeholderTextColor={colors.icon} secureTextEntry style={styles.input} />
-        <TextInput placeholder="New password" placeholderTextColor={colors.icon} secureTextEntry style={styles.input} />
-        <TextInput placeholder="Confirm new password" placeholderTextColor={colors.icon} secureTextEntry style={styles.input} />
-        <Button label="Update password" onPress={() => done('Password updated (sample)')} />
-      </BottomSheet>
-
-      <BottomSheet visible={sheet === 'notifications'} onClose={() => setSheet(null)} title="Notifications">
-        {([
-          ['reminders', 'Session reminders'],
-          ['updates', 'Activity updates'],
-          ['messages', 'Messages'],
-        ] as const).map(([key, label]) => (
-          <View key={key} style={styles.prefRow}>
-            <Text style={styles.itemText}>{label}</Text>
-            <Switch
-              value={prefs[key]}
-              onValueChange={(v) => setPrefs((p) => ({ ...p, [key]: v }))}
-              trackColor={{ true: colors.primary, false: colors.border }}
-            />
-          </View>
-        ))}
-        <Button label="Done" variant="soft" onPress={() => done('Notification settings saved')} />
+        <View style={{ gap: 16 }}>
+          <AuthField label="Current password" secure autoCapitalize="none" />
+          <AuthField label="New password" secure autoCapitalize="none" hint="At least 8 characters." />
+          <AuthField label="Type the new password again" secure autoCapitalize="none" />
+          <Button label="Update password" size="lg" onPress={() => done('Password updated (sample)')} />
+        </View>
       </BottomSheet>
       {toast}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  who: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  name: { fontSize: 16, fontWeight: '600', color: colors.text },
-  meta: { fontSize: 12, color: colors.muted },
-  pid: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6 },
-  pidText: { fontSize: 10, fontWeight: '600', color: colors.text },
-  section: { fontSize: 12, color: colors.muted, marginBottom: -6 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
-  disabledItem: { opacity: 0.55 },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: colors.text },
+const s = StyleSheet.create({
+  page: { padding: 16, gap: 12, paddingBottom: 40 },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.card, borderRadius: 16, padding: 16, ...shadow },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 22 },
+  name: { fontSize: 19, fontWeight: '600', color: colors.text },
+  email: { fontSize: 14, color: colors.muted },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 13, color: colors.muted },
+  groupLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
   sexRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  prefRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
-  itemText: { flex: 1, fontSize: 14, color: colors.text },
-  h: { fontSize: 14, fontWeight: '600', color: colors.text },
-  status: { fontSize: 12, fontWeight: '600' },
 });

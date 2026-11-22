@@ -41,11 +41,10 @@ export const user = {
   name: 'Ronald Richards',
   firstName: 'Ronald',
   email: 'ronaldrichards@gmail.com',
-  participantId: 'TMIS-0042-AV',
 };
 
 /** App main colour; screens outside an organization use it. */
-export const DEFAULT_BRAND = '#2965DD';
+export const DEFAULT_BRAND = '#2f5fcc';
 
 export const agencies: Agency[] = [
   {

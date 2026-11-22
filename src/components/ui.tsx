@@ -42,12 +42,15 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
+  size = 'md',
   disabled,
   style,
 }: {
   label: string;
   onPress?: () => void;
   variant?: 'primary' | 'soft';
+  /** `lg` is the roomy 56 px button used on sign-in and sign-up. */
+  size?: 'md' | 'lg';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -59,9 +62,9 @@ export function Button({
       onPress={onPress}
       disabled={disabled}
       scaleTo={0.96}
-      style={[styles.btn, { backgroundColor: primary ? brand.primary : brand.soft }, disabled && { opacity: 0.5 }, style]}
+      style={[styles.btn, size === 'lg' && styles.btnLg, { backgroundColor: primary ? brand.primary : brand.soft }, disabled && { opacity: 0.5 }, style]}
     >
-      <Text style={[styles.btnText, { color: primary ? '#fff' : brand.dark }]}>{label}</Text>
+      <Text style={[styles.btnText, size === 'lg' && styles.btnTextLg, { color: primary ? '#fff' : brand.dark }]}>{label}</Text>
     </PressableScale>
   );
 }
@@ -106,9 +109,11 @@ export function Chip({ label, active, onPress }: { label: string; active: boolea
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: radius.md, padding: 14, ...shadow },
+  card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, ...shadow },
   btn: { minHeight: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  btnLg: { minHeight: 56, borderRadius: 14 },
   btnText: { fontSize: 14, fontWeight: '600' },
+  btnTextLg: { fontSize: 17 },
   seg: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.md, padding: 4, ...shadow },
   segItem: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   segText: { fontSize: 14, fontWeight: '500', color: colors.muted },

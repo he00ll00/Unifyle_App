@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/components/Text';
 import { useBrand } from '@/components/Brand';
 import { BottomSheet, StatusPill } from '@/components/bits';
@@ -8,6 +8,7 @@ import { ChecklistRows, FormOpener } from '@/components/forms';
 import { MaterialViewer } from '@/components/MaterialViewer';
 import { Button, Card, Chip, PressableScale } from '@/components/ui';
 import type { Activity } from '@/data/mock';
+import { activityExtras } from '@/data/extras';
 import {
   allSessions,
   attendanceDays,
@@ -26,19 +27,33 @@ import {
 import { certificateStatus, demoActions, useDemo } from '@/store/demo';
 import { colors, radius, shadow } from '@/theme';
 
-export type TabName = 'Overview' | 'Sessions' | 'Materials' | 'Attendance' | 'Submissions';
+export type TabName = 'Overview' | 'Sessions' | 'Materials' | 'Attendance' | 'Submissions' | 'Updates';
 /** The session a participant is looking at: its details, or the schedule with that session highlighted. */
 export type SessionFocus = { id: string; view: 'detail' | 'schedule' };
 /** Switch to another tab, optionally landing on a session or on one session's materials. */
 export type GoTo = (tab: TabName, opts?: { session?: SessionFocus; materials?: string }) => void;
 type Notify = (message: string) => void;
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <Card style={{ gap: 8 }}>
-    <Text style={s.h}>{title}</Text>
-    {children}
-  </Card>
-);
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const Section = ({ title, icon, children }: { title: string; icon?: IconName; children: React.ReactNode }) => {
+  const brand = useBrand();
+  return (
+    <Card style={{ gap: 10 }}>
+      <View style={s.sectionHead}>
+        {icon ? (
+          <View style={[s.sectionIcon, { backgroundColor: brand.soft }]}>
+            <Ionicons name={icon} size={18} color={brand.primary} />
+          </View>
+        ) : null}
+        <Text style={s.h} accessibilityRole="header">
+          {title}
+        </Text>
+      </View>
+      {children}
+    </Card>
+  );
+};
 
 const Bullets = ({ items }: { items: string[] }) => {
   const brand = useBrand();
@@ -60,6 +75,7 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
   const brand = useBrand();
   const p = progressOf(activity);
   const overview = overviewOf(activity);
+  const extras = activityExtras(activity);
   const [flow, setFlow] = useState(false);
   const programFlow: SampleMaterial = {
     id: 'program-flow',
@@ -113,7 +129,7 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         <ChecklistRows activity={activity} open={open} locked={activity.status !== 'Completed'} />
       </Card>
 
-      <Section title="About this activity">
+      <Section title="About this activity" icon="information-circle-outline">
         <Text style={s.body}>{overview.about}</Text>
         <View style={s.grid2}>
           <Field label="ACTIVITY TYPE" value={activity.category} />
@@ -135,14 +151,21 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         </View>
       </Section>
 
-      <Section title="Schedule and venue">
+      <Section title="Schedule and venue" icon="calendar-outline">
         <Text style={s.body}>{activity.dates}</Text>
         <Text style={s.body}>{overview.schedule.time}</Text>
         <Text style={s.body}>{activity.venue}</Text>
         <Text style={s.meta}>{overview.schedule.rooms}</Text>
+        <View style={s.divider} />
+        <Text style={s.body}>{extras.directions.tip}</Text>
+        <Pill label="Open in Maps" onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(extras.directions.address)}`).catch(() => {})} />
       </Section>
 
-      <Section title="Participating agencies">
+      <Section title="What to bring" icon="bag-handle-outline">
+        <Bullets items={extras.bring} />
+      </Section>
+
+      <Section title="Participating agencies" icon="business-outline">
         {overview.hosts.map((h) => (
           <View key={h.name} style={s.between}>
             <View style={{ flex: 1 }}>
@@ -154,15 +177,15 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         ))}
       </Section>
 
-      <Section title="Objectives">
+      <Section title="Objectives" icon="flag-outline">
         <Bullets items={overview.objectives} />
       </Section>
 
-      <Section title="Expected outcomes">
+      <Section title="Expected outcomes" icon="trophy-outline">
         <Bullets items={overview.outcomes} />
       </Section>
 
-      <Section title="Resource persons and facilitators">
+      <Section title="Resource persons and facilitators" icon="people-outline">
         {overview.people.map((p2) => (
           <View key={p2.name} style={s.person}>
             <View style={[s.avatar, { backgroundColor: brand.soft }]}>
@@ -175,6 +198,48 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
           </View>
         ))}
       </Section>
+
+      <Section title="Questions? Contact the coordinator" icon="chatbubble-ellipses-outline">
+        <Text style={s.body}>{extras.contact.note}</Text>
+        <Pill label={`Email ${extras.contact.role.toLowerCase()}`} primary onPress={() => Linking.openURL(`mailto:${extras.contact.email}`).catch(() => {})} />
+        <Text style={s.meta}>Sample address: {extras.contact.email}</Text>
+      </Section>
+    </View>
+  );
+}
+
+/* ------------------------------ Updates ------------------------------ */
+
+/** Announcements from the agency about this activity (the web console's Messaging, one activity at a time). */
+export function UpdatesTab({ activity }: { activity: Activity }) {
+  const brand = useBrand();
+  const { updates } = activityExtras(activity);
+  if (updates.length === 0)
+    return (
+      <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 28 }}>
+        <Ionicons name="megaphone-outline" size={28} color={brand.primary} />
+        <Text style={s.h}>No updates yet</Text>
+        <Text style={s.body}>Announcements about this activity will show up here.</Text>
+      </Card>
+    );
+  return (
+    <View style={{ gap: 12 }}>
+      {updates.map((u) => (
+        <Card key={u.id} style={{ gap: 8 }}>
+          <View style={s.sectionHead}>
+            <View style={[s.sectionIcon, { backgroundColor: brand.soft }]}>
+              <Ionicons name="megaphone-outline" size={18} color={brand.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.h}>{u.title}</Text>
+              <Text style={s.meta}>
+                {u.from} · {u.when}
+              </Text>
+            </View>
+          </View>
+          <Text style={s.body}>{u.body}</Text>
+        </Card>
+      ))}
     </View>
   );
 }
@@ -614,11 +679,13 @@ export function SubmissionsTab({ activity, open, onCertificate }: { activity: Ac
   );
 }
 const s = StyleSheet.create({
-  h: { fontSize: 14, fontWeight: '700', color: colors.text },
+  h: { fontSize: 16, fontWeight: '600', color: colors.text },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 18, fontWeight: '700', color: colors.text },
-  name: { fontSize: 14, fontWeight: '600', color: colors.text },
-  body: { fontSize: 14, color: colors.muted, lineHeight: 19 },
-  meta: { fontSize: 12, color: colors.muted },
+  name: { fontSize: 15, fontWeight: '600', color: colors.text },
+  body: { fontSize: 15, color: colors.muted, lineHeight: 22 },
+  meta: { fontSize: 13, color: colors.muted },
   kicker: { fontSize: 10, fontWeight: '700', color: colors.muted, letterSpacing: 0.4 },
   big: { fontSize: 24, fontWeight: '700' },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },

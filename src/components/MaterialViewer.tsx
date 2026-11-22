@@ -159,7 +159,7 @@ export function MaterialViewer({
 
         {material.type === 'Image' && (
           <View style={styles.center}>
-            <LinearGradient colors={['#A7F3D0', '#2965DD']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.photo}>
+            <LinearGradient colors={['#A7F3D0', '#2f5fcc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.photo}>
               <Ionicons name="image-outline" size={64} color="rgba(255,255,255,0.9)" />
             </LinearGradient>
             <Text style={styles.caption}>Sample photo · {material.title}</Text>

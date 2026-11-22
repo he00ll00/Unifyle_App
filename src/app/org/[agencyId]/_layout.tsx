@@ -14,9 +14,9 @@ type BottomTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs
 // "Active text" navigation: inactive tabs are icon-only, the active tab shows its label
 // in a tinted pill. The first cell is the organization's logo, which opens its profile page.
 const NAV: { name: string; label: string; text: string; icon: IconName; active: IconName }[] = [
-  { name: '(home)', label: 'Dashboard', text: 'Dashboard', icon: 'calendar-outline', active: 'calendar' },
+  { name: '(home)', label: 'My activities', text: 'Activities', icon: 'calendar-outline', active: 'calendar' },
   { name: 'checkin', label: 'QR check-in', text: 'Check-in', icon: 'scan-outline', active: 'scan' },
-  { name: 'plans', label: 'Plans and certificates', text: 'Plans', icon: 'ribbon-outline', active: 'ribbon' },
+  { name: 'plans', label: 'To-do and certificates', text: 'To-do', icon: 'ribbon-outline', active: 'ribbon' },
 ];
 
 function OrgTabBar({
@@ -67,7 +67,7 @@ function OrgTabBar({
               color={color}
               soft={soft}
               onPress={() => {
-                // Dashboard: also return to the top of its stack (leave an open activity or profile).
+                // My activities: also return to the top of its stack (leave an open activity or profile).
                 if (item.name === '(home)') router.navigate({ pathname: '/org/[agencyId]', params: { agencyId } });
                 else navigateToTab(route.key);
               }}
@@ -178,7 +178,7 @@ export default function OrgLayout() {
         {/* Organization profile: opened from the logo button, not part of the icon list. */}
         <Tabs.Screen name="org-profile" options={{ headerShown: false }} />
         <Tabs.Screen name="checkin" options={{ headerTitle: 'QR check-in' }} />
-        <Tabs.Screen name="plans" options={{ headerTitle: 'Plans & certs' }} />
+        <Tabs.Screen name="plans" options={{ headerTitle: 'To-do & certificates' }} />
       </Tabs>
     </BrandProvider>
   );
