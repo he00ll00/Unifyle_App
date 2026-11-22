@@ -10,6 +10,7 @@ import { JoinOrgModal } from '@/components/JoinOrgModal';
 import { PressableScale } from '@/components/ui';
 import { Agency, user } from '@/data/mock';
 import { useStore } from '@/store/AppStore';
+import { unreadCount, useDemo } from '@/store/demo';
 import { colors, shadow } from '@/theme';
 
 // Values below come from the Figma frame "Workspace — Organizations".
@@ -93,6 +94,8 @@ export default function Workspaces() {
   const [q, setQ] = useState('');
   const [joinOpen, setJoinOpen] = useState(false);
   const { agencies, leaveAgency, moveAgency } = useStore();
+  const demo = useDemo();
+  const unread = unreadCount(demo, agencies.map((a) => a.id));
   const [menuFor, setMenuFor] = useState<Agency | null>(null);
   const menuIndex = menuFor ? agencies.findIndex((a) => a.id === menuFor.id) : -1;
   const list = useMemo(
@@ -111,6 +114,11 @@ export default function Workspaces() {
             style={styles.circle}
           >
             <Ionicons name="notifications-outline" size={22} color={GRAY} />
+            {unread > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            )}
           </PressableScale>
           <PressableScale
             accessibilityRole="button"
@@ -218,6 +226,8 @@ export default function Workspaces() {
 }
 
 const styles = StyleSheet.create({
+  badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 2, borderColor: '#fff' },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   screen: { flex: 1, backgroundColor: '#FFFFFF' },
   header: { paddingHorizontal: 15, backgroundColor: '#FFFFFF' },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

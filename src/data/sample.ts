@@ -1,3 +1,6 @@
+import { findAgency } from '@/data/mock';
+import type { Activity } from '@/data/mock';
+
 // Front-end-only example content for the activity workspace (from the design).
 // Replace with API data later; every screen reads from here.
 
@@ -17,6 +20,10 @@ export type SampleSession = {
   range: string;
   venue: string;
   about: string;
+  // QR check-in details (session.qr_token / short_code / opens_at / closes_at)
+  shortCode: string;
+  opens: string;
+  closes: string;
 };
 
 type SampleDay = { label: string; today?: boolean; sessions: SampleSession[] };
@@ -26,15 +33,15 @@ export const days: SampleDay[] = [
     label: 'Day 1 · June 17',
     sessions: [
       {
-        id: 's1', time: '8:30', period: 'AM', kind: 'SESSION 1', title: 'Introduction to Rubber Production',
+        id: 's1', shortCode: 'RUB-1021', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'SESSION 1', title: 'Introduction to Rubber Production',
         speaker: 'Dr. Leonilo B. Castor', status: 'Completed', files: 2,
-        date: 'June 17, 2025', range: '8:30 AM – 11:30 AM', venue: 'PRRI Training Center, Hall A',
+        date: 'June 17, 2025', range: '8:30 AM – 10:30 AM', venue: 'Training Hall A',
         about: 'Overview of rubber production, clone selection and site suitability.',
       },
       {
-        id: 's2', time: '1:00', period: 'PM', kind: 'WORKSHOP', title: 'Latex Handling and Quality Control',
-        speaker: 'Ms. Joy Fabian', status: 'Completed', files: 1,
-        date: 'June 17, 2025', range: '1:00 PM – 4:30 PM', venue: 'PRRI Training Center, Lab 2',
+        id: 's2', shortCode: 'RUB-1022', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'WORKSHOP', title: 'Latex Handling and Quality Control',
+        speaker: 'Ms. Joy Fabian', status: 'Completed', files: 2,
+        date: 'June 17, 2025', range: '1:00 PM – 4:00 PM', venue: 'Training Hall A',
         about: 'Hands-on latex collection, handling and quality checks.',
       },
     ],
@@ -44,15 +51,15 @@ export const days: SampleDay[] = [
     today: true,
     sessions: [
       {
-        id: 's3', time: '8:30', period: 'AM', kind: 'SESSION 2', title: 'Rubber Tapping Techniques',
+        id: 's3', shortCode: 'RUB-2031', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'SESSION 2', title: 'Rubber Tapping Techniques',
         speaker: 'Engr. Ana Lucero', status: 'In progress', files: 3,
-        date: 'June 18, 2025', range: '8:30 AM – 11:30 AM', venue: 'PRRI Training Center, Hall A',
+        date: 'June 18, 2025', range: '8:30 AM – 11:30 AM', venue: 'Training Hall B',
         about: 'Tapping systems, cut depth and panel management.',
       },
       {
-        id: 's4', time: '1:00', period: 'PM', kind: 'PRACTICUM', title: 'Demo Farm: Tapping Practicum',
+        id: 's4', shortCode: 'RUB-2032', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'PRACTICUM', title: 'Demo Farm: Tapping Practicum',
         speaker: 'Engr. Ana Lucero', status: 'Up next', files: 0,
-        date: 'June 18, 2025', range: '1:00 PM – 4:30 PM', venue: 'PRRI Demo Farm, Block C',
+        date: 'June 18, 2025', range: '1:00 PM – 4:30 PM', venue: 'Demo Farm Block C',
         about: 'Hands-on tapping in three stations. Bring boots and a hat. Facilitators give feedback on each participant’s cuts.',
       },
     ],
@@ -61,47 +68,60 @@ export const days: SampleDay[] = [
     label: 'Day 3 · June 19',
     sessions: [
       {
-        id: 's5', time: '8:30', period: 'AM', kind: 'SESSION 3', title: 'Plantation Management',
+        id: 's5', shortCode: 'RUB-3041', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'SESSION 3', title: 'Plantation Management',
         speaker: 'Mr. Dennis Ramos', status: 'Scheduled', files: 1,
-        date: 'June 19, 2025', range: '8:30 AM – 11:30 AM', venue: 'PRRI Training Center, Hall A',
+        date: 'June 19, 2025', range: '8:30 AM – 11:30 AM', venue: 'Training Hall B',
         about: 'Maintenance calendars, fertilizer schedules and plantation records.',
       },
       {
-        id: 's6', time: '1:00', period: 'PM', kind: 'CLOSING', title: 'Reentry Planning and Closing',
-        speaker: 'Ms. Joy Fabian', status: 'Scheduled', files: 0,
-        date: 'June 19, 2025', range: '1:00 PM – 3:00 PM', venue: 'PRRI Training Center, Hall A',
+        id: 's6', shortCode: 'RUB-3042', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'CLOSING', title: 'Reentry Planning and Closing',
+        speaker: 'Ms. Joy Fabian', status: 'Scheduled', files: 1,
+        date: 'June 19, 2025', range: '1:00 PM – 3:30 PM', venue: 'Training Hall A',
         about: 'Draft your reentry plan and close the activity.',
       },
     ],
   },
 ];
 
-export const nextSession = days[1].sessions[1];
 export const allSessions: SampleSession[] = days.flatMap((d) => d.sessions);
+/** What the admin Overview calls "Happening now" (an ongoing session) or "Up next" (the first one still to come). */
+export const nextSession = allSessions.find((x) => x.status === 'In progress') ?? allSessions.find((x) => x.status === 'Up next' || x.status === 'Scheduled') ?? allSessions[0];
 
+/** The role an agency holds in an activity (activity_partner.role). */
+export type PartnerRole = 'Implementing' | 'Funding' | 'Collaborating' | 'Participating';
+
+/** Overview content, in the same fields the admin Overview and Plan tabs fill in. */
 export const overview = {
   about:
-    'Learn sustainable rubber production practices, proper tapping techniques, and practical farm management from PRRI specialists.',
-  schedule: { dates: 'June 17–19, 2025', time: '8:00 AM – 5:00 PM · 3 days', venue: 'PRRI Training Center, Zamboanga Sibugay', rooms: 'Training Hall and Demo Farm' },
+    'A three-day capability-building program designed to strengthen participants’ practical knowledge in sustainable rubber production, proper tapping techniques, and post-harvest handling.',
+  funding: 'PRRI GAA 2025',
+  lead: 'Dr. Marissa L. Flores',
+  audience: 'rubber farmers',
+  topics: 'Rubber production, Tapping, Plantation management',
+  documentation: 'Photo, attendance and report',
+  programFlow: { file: 'Program_Flow_2025.pdf', size: '0.8 MB' },
+  schedule: { dates: 'June 17–19, 2025', time: '8:30 AM – 4:30 PM · 3 days', venue: 'PRRI Training Center, Zamboanga Sibugay', rooms: 'Training Hall A, Training Hall B and Demo Farm Block C' },
   hosts: [
-    { name: 'PRRI', note: 'Philippine Rubber Research Institute', host: true },
-    { name: 'DA Region IX', note: 'Implementing partner', host: false },
-    { name: 'Zamboanga Sibugay LGU', note: 'Venue partner', host: false },
-    { name: 'Rubber Growers Association', note: 'Participating organization', host: false },
+    { name: 'Philippine Rubber Research Institute', role: 'Implementing' as PartnerRole, note: 'Default role, plans and runs the activity' },
+    { name: 'DA Region IX', role: 'Funding' as PartnerRole, note: 'GAA 2025 co-funding' },
+    { name: 'Zamboanga Sibugay LGU', role: 'Collaborating' as PartnerRole, note: 'Venue and logistics support' },
+    { name: 'Rubber Growers Association', role: 'Participating' as PartnerRole, note: 'Nominates 12 farmer-participants' },
   ],
   objectives: [
-    'Explain how rubber is produced and which clones suit a given site',
-    'Perform correct tapping on a mature rubber tree',
-    'Prepare a maintenance calendar for a smallholder plantation',
+    'Perform correct tapping on a mature tree',
+    'Identify rubber clones suited to their site',
+    'Apply basic latex quality control',
   ],
   outcomes: [
-    'Participants can tap trees using a recommended system',
-    'Each participant leaves with a farm maintenance plan',
-    'A reentry plan is filed with the host agency',
+    'Participants adopt S/2 d3 tapping on their farms',
+    'Participants cascade the training to neighbouring farmers',
   ],
   people: [
-    { initials: 'LB', name: 'Dr. Leonilo B. Castor', role: 'Lead resource person' },
-    { initials: 'AL', name: 'Engr. Ana Lucero', role: 'Tapping specialist' },
+    { initials: 'LC', name: 'Dr. Leonilo B. Castor', role: 'Resource person' },
+    { initials: 'AL', name: 'Engr. Ana Lucero', role: 'Resource person' },
+    { initials: 'DR', name: 'Mr. Dennis Ramos', role: 'Resource person' },
+    { initials: 'JF', name: 'Ms. Joy Fabian', role: 'Facilitator' },
+    { initials: 'RO', name: 'Mr. Ramil Ocampo', role: 'Facilitator' },
   ],
   progress: { day: 'Day 2 of 3', pct: 33, note: '2 of 6 sessions completed · Registration confirmed' },
 };
@@ -134,6 +154,7 @@ export const materialGroups: MaterialGroup[] = [
     title: 'Workshop · Latex Handling and Quality Control',
     items: [
       { id: 'm3', badge: 'DOC', type: 'Word', title: 'Latex Quality Checklist', meta: 'Word · 120 KB', by: 'Workshop · Ms. Joy Fabian', uploaded: 'Uploaded Jun 11, 2025', primary: 'View' },
+      { id: 'm9', badge: 'PDF', type: 'PDF', title: 'Latex Grading Guide', meta: 'PDF · 1.1 MB', by: 'Workshop · Ms. Joy Fabian', uploaded: 'Uploaded Jun 11, 2025', primary: 'View' },
     ],
   },
   {
@@ -148,6 +169,12 @@ export const materialGroups: MaterialGroup[] = [
     title: 'Session 3 · Plantation Management',
     items: [
       { id: 'm7', badge: 'HND', type: 'Handout', title: 'Plantation Management Handout', meta: 'Handout · 980 KB', by: 'Session 3 · Mr. Dennis Ramos', uploaded: 'Uploaded Jun 14, 2025', primary: 'View' },
+    ],
+  },
+  {
+    title: 'Closing · Reentry Planning and Closing',
+    items: [
+      { id: 'm10', badge: 'DOC', type: 'Word', title: 'Reentry Plan Template', meta: 'Word · 85 KB', by: 'Closing · Ms. Joy Fabian', uploaded: 'Uploaded Jun 14, 2025', primary: 'View' },
     ],
   },
   {
@@ -204,6 +231,9 @@ export const attendanceHistory = [
   { title: 'Day 1 · Morning check-out', when: 'June 17 · 11:34 AM', synced: true },
   { title: 'Day 1 · Morning check-in', when: 'June 17 · 8:21 AM', synced: true },
 ];
+
+/** Check point windows, so a typed session code can be matched to its session. */
+export const sessionByCode = (code: string) => allSessions.find((x) => x.shortCode === code.trim().toUpperCase());
 
 export const orgAbout = {
   handle: '@prri',
@@ -281,3 +311,67 @@ export const participantCategories = ['Farmer', 'Extension worker', 'Student', '
 
 /** Participant profile fields kept by the admin system (participant_profile). */
 export const profileExtras = { sex: 'Male', birthDate: 'March 14, 1990', province: 'Zamboanga Sibugay', municipality: 'Ipil' };
+/** Overview content of an activity (activity_objective, activity_outcome, activity_partner, staffing). */
+export function overviewOf(a: Activity): typeof overview {
+  if (a.id === 'rubber-tapping') return overview;
+  const agency = findAgency(a.agencyId);
+  const host = agency?.short ?? 'Host agency';
+  return {
+    about: `${a.title} is a ${a.category.toLowerCase()} organized by ${agency?.name ?? 'the host agency'}. Participants learn practical skills they can apply on their own farms and in their communities.`,
+    funding: 'Agency Fund',
+    lead: `${host} training coordinator`,
+    audience: 'participants',
+    topics: a.category,
+    documentation: 'Photo, attendance and report',
+    programFlow: overview.programFlow,
+    schedule: { dates: a.dates, time: '8:30 AM – 4:30 PM', venue: a.venue, rooms: 'Main hall and field sites' },
+    hosts: [
+      { name: agency?.name ?? 'Host agency', role: 'Implementing', note: 'Default role, plans and runs the activity' },
+      { name: 'DA Region IX', role: 'Collaborating', note: 'Technical support' },
+      { name: 'Local government unit', role: 'Collaborating', note: 'Venue and logistics support' },
+    ],
+    objectives: [
+      `Explain the key practices covered in ${a.title}`,
+      'Apply the recommended techniques in a hands-on practicum',
+      'Prepare a simple plan to use what was learned back home',
+    ],
+    outcomes: [
+      'Participants can apply the recommended practices',
+      'Each participant leaves with a reentry plan',
+      `A completion report is filed with ${host}`,
+    ],
+    people: [
+      { initials: 'RP', name: 'Resource person to be announced', role: 'Resource person' },
+      { initials: 'FA', name: `${host} facilitators`, role: 'Facilitator' },
+    ],
+    progress: overview.progress,
+  };
+}
+
+/** Progress shown on the Overview tab, by activity status. */
+export function progressOf(a: Activity) {
+  if (a.status === 'Completed') return { day: 'Completed', pct: 100, note: 'All sessions completed' };
+  if (a.status === 'Upcoming') return { day: 'Not started', pct: 0, note: a.progress };
+  return overview.progress;
+}
+
+/** The participant's membership in an organization (agency_membership). */
+export const membershipExtras = { affiliation: 'Ipil Rubber Growers Association', status: 'Active' };
+
+/** Updates for the notifications list (notification table). `link` opens an activity. */
+export type NotificationItem = {
+  id: string;
+  agencyShort: string;
+  title: string;
+  body: string;
+  when: string;
+  icon: 'time-outline' | 'document-text-outline' | 'megaphone-outline' | 'chatbubble-ellipses-outline' | 'ribbon-outline';
+  link?: { agencyId: string; activityId: string };
+};
+
+export const notificationItems: NotificationItem[] = [
+  { id: 'n1', agencyShort: 'PRRI', title: 'Session starts soon', body: 'Demo Farm: Tapping Practicum begins at 1:00 PM today. Bring boots and a hat.', when: '1 hour ago', icon: 'time-outline', link: { agencyId: 'prri', activityId: 'rubber-tapping' } },
+  { id: 'n2', agencyShort: 'PRRI', title: 'New material uploaded', body: '“Demonstration Guide” was added to Session 2: Rubber Tapping Techniques.', when: 'Yesterday', icon: 'document-text-outline', link: { agencyId: 'prri', activityId: 'rubber-tapping' } },
+  { id: 'n3', agencyShort: 'MAES', title: 'Registration is open', body: 'Cooperative Bookkeeping Basics is open. Ask MAES for the activity code to join.', when: '2 days ago', icon: 'megaphone-outline', link: { agencyId: 'maes', activityId: 'maes-coop' } },
+  { id: 'n4', agencyShort: 'BFAR', title: 'Feedback requested', body: 'Please share your feedback for the Fisherfolk Registration and Safety Seminar.', when: '3 days ago', icon: 'chatbubble-ellipses-outline', link: { agencyId: 'bfar', activityId: 'bfar-fisherfolk' } },
+];

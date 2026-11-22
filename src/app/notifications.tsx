@@ -1,25 +1,76 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { BottomSheet, StatusPill } from '@/components/bits';
+import { CertificateView } from '@/components/CertificateView';
 import { useToast } from '@/components/sheets';
 import { Text } from '@/components/Text';
 import { Button, Card, PressableScale } from '@/components/ui';
+import { Activity } from '@/data/mock';
 import { notifications } from '@/data/sample';
-import { demoActions, useDemo } from '@/store/demo';
+import { useStore } from '@/store/AppStore';
+import { demoActions, notificationsFor, useDemo } from '@/store/demo';
 import { colors, radius } from '@/theme';
 
-/** Notifications: pending invitations and organizations you no longer have access to (front end only). */
+/** Notifications: updates, pending invitations and organizations you no longer have access to (front end only). */
 export default function Notifications() {
   const { pending, revoked } = notifications;
-  const { invitation } = useDemo();
+  const demo = useDemo();
+  const { invitation } = demo;
+  const { agencies } = useStore();
+  const updates = notificationsFor(demo, agencies.map((a) => a.id));
+  const unread = updates.filter((u) => u.unread);
+  const [certificate, setCertificate] = useState<Activity | null>(null);
   const { notify, toast } = useToast();
   const [details, setDetails] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-        <Text style={styles.section}>PENDING INVITATIONS</Text>
+        <View style={styles.sectionRow}>
+          <Text style={styles.section}>UPDATES{unread.length > 0 ? ` · ${unread.length} NEW` : ''}</Text>
+          {unread.length > 0 && (
+            <PressableScale accessibilityRole="button" scaleTo={0.94} hitSlop={8} onPress={() => demoActions.markRead(unread.map((u) => u.id))}>
+              <Text style={[styles.meta, { color: colors.primary, fontWeight: '700' }]}>Mark all as read</Text>
+            </PressableScale>
+          )}
+        </View>
+        {updates.length === 0 && (
+          <Card>
+            <Text style={styles.meta}>No updates yet.</Text>
+          </Card>
+        )}
+        {updates.map((u) => (
+          <PressableScale
+            key={u.id}
+            scaleTo={0.98}
+            accessibilityRole="button"
+            onPress={() => {
+              demoActions.markRead([u.id]);
+              if (u.certificate) setCertificate(u.certificate);
+              else if (u.link) router.navigate({ pathname: '/org/[agencyId]/activity/[id]', params: { agencyId: u.link.agencyId, id: u.link.activityId } });
+            }}
+          >
+            <Card style={styles.update}>
+              <View style={[styles.logo, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name={u.icon} size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={styles.updateHead}>
+                  <Text style={[styles.name, { flex: 1 }]}>{u.title}</Text>
+                  {u.unread && <View style={styles.dot} />}
+                </View>
+                <Text style={styles.meta}>{u.body}</Text>
+                <Text style={styles.when}>
+                  {u.agencyShort} · {u.when}
+                </Text>
+              </View>
+            </Card>
+          </PressableScale>
+        ))}
+
+        <Text style={[styles.section, { marginTop: 8 }]}>PENDING INVITATIONS</Text>
         {invitation === 'declined' ? (
           <Card>
             <Text style={styles.meta}>You declined the invitation from {pending.name}.</Text>
@@ -101,6 +152,14 @@ export default function Notifications() {
         />
         <Button label="Close" variant="soft" onPress={() => setDetails(false)} />
       </BottomSheet>
+      <CertificateView
+        activity={certificate}
+        onClose={() => setCertificate(null)}
+        onDownload={() => {
+          setCertificate(null);
+          notify('Certificate saved to your device (sample)');
+        }}
+      />
       {toast}
     </View>
   );
@@ -108,6 +167,11 @@ export default function Notifications() {
 
 const styles = StyleSheet.create({
   section: { fontSize: 12, fontWeight: '700', color: colors.muted, letterSpacing: 0.6 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  update: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  updateHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  when: { fontSize: 11, color: colors.icon, marginTop: 2 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logo: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 10, fontWeight: '700' },

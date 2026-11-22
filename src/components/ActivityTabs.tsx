@@ -19,10 +19,11 @@ import {
   materialGroups,
   materialTypes,
   nextSession,
-  overview,
+  overviewOf,
+  progressOf,
   SampleMaterial,
 } from '@/data/sample';
-import { certificateStatus, useDemo } from '@/store/demo';
+import { certificateStatus, demoActions, useDemo } from '@/store/demo';
 import { colors, radius, shadow } from '@/theme';
 
 export type TabName = 'Overview' | 'Sessions' | 'Materials' | 'Attendance' | 'Submissions';
@@ -57,10 +58,23 @@ const Bullets = ({ items }: { items: string[] }) => {
 
 export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo: GoTo; open: FormOpener }) {
   const brand = useBrand();
-  const p = overview.progress;
+  const p = progressOf(activity);
+  const overview = overviewOf(activity);
+  const [flow, setFlow] = useState(false);
+  const programFlow: SampleMaterial = {
+    id: 'program-flow',
+    badge: 'PDF',
+    type: 'PDF',
+    title: overview.programFlow.file.replace(/\.pdf$/i, '').replace(/_/g, ' '),
+    meta: `PDF · ${overview.programFlow.size}`,
+    by: 'Program flow',
+    uploaded: 'Uploaded Jun 05, 2025',
+    primary: 'View',
+  };
 
   return (
     <View style={{ gap: 12 }}>
+      <MaterialViewer material={flow ? programFlow : null} onClose={() => setFlow(false)} onOpenLink={() => {}} />
       {/* Opens the session's details, where its materials and schedule are. */}
       <PressableScale
         scaleTo={0.98}
@@ -70,7 +84,7 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
       >
         <Card style={{ gap: 4, borderLeftWidth: 4, borderLeftColor: brand.primary }}>
           <View style={s.between}>
-            <Text style={s.kicker}>NEXT SESSION</Text>
+            <Text style={s.kicker}>{nextSession.status === 'In progress' ? 'HAPPENING NOW' : 'UP NEXT'}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
           </View>
           <Text style={s.h}>{nextSession.title}</Text>
@@ -100,6 +114,24 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
 
       <Section title="About this activity">
         <Text style={s.body}>{overview.about}</Text>
+        <View style={s.grid2}>
+          <Field label="ACTIVITY TYPE" value={activity.category} />
+          <Field label="FUNDING SOURCE" value={overview.funding} />
+          <Field label="ACTIVITY LEAD" value={overview.lead} />
+          <Field label="TARGET PARTICIPANTS" value={`${activity.capacity?.max ?? 50} ${overview.audience}`} />
+          <Field label="TOPICS" value={overview.topics} />
+          <Field label="DOCUMENTATION" value={overview.documentation} />
+        </View>
+        <View style={s.divider} />
+        <View style={s.between}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.name}>Program flow</Text>
+            <Text style={s.meta}>
+              {overview.programFlow.file} · {overview.programFlow.size}
+            </Text>
+          </View>
+          <Pill label="View" onPress={() => setFlow(true)} />
+        </View>
       </Section>
 
       <Section title="Schedule and venue">
@@ -109,14 +141,14 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         <Text style={s.meta}>{overview.schedule.rooms}</Text>
       </Section>
 
-      <Section title="Hosting agencies">
+      <Section title="Participating agencies">
         {overview.hosts.map((h) => (
           <View key={h.name} style={s.between}>
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{h.name}</Text>
               <Text style={s.meta}>{h.note}</Text>
             </View>
-            {h.host && <StatusPill label="Host agency" tone="ok" />}
+            <StatusPill label={h.role} tone={h.role === 'Implementing' ? 'ok' : h.role === 'Funding' ? 'info' : 'muted'} />
           </View>
         ))}
       </Section>
@@ -184,6 +216,15 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
             <Field label="VENUE / ROOM" value={session.venue} />
           </View>
           <Text style={s.body}>{session.about}</Text>
+        </Card>
+
+        <Card style={{ gap: 8 }}>
+          <Text style={s.h}>Check-in</Text>
+          <View style={s.grid2}>
+            <Field label="CHECK-IN WINDOW" value={`${session.opens} – ${session.closes}`} />
+            <Field label="SESSION CODE" value={session.shortCode} />
+          </View>
+          <Text style={s.meta}>Scan the session QR code at the entrance. If the camera is not working, type the session code on the scanner.</Text>
         </Card>
 
         <Card style={{ gap: 8 }}>
@@ -279,6 +320,12 @@ function Pill({ label, primary, onPress }: { label: string; primary?: boolean; o
 
 /* ------------------------------ Materials ------------------------------ */
 
+/** Size in MB from a label like "PowerPoint · 4.8 MB" or "Word · 120 KB". */
+const sizeMb = (meta: string) => {
+  const m = /([\d.]+)\s*(KB|MB)/.exec(meta);
+  return m ? (m[2] === 'KB' ? Number(m[1]) / 1024 : Number(m[1])) : 0;
+};
+
 const badgeColor: Record<string, [string, string]> = {
   PPT: ['#FFEDD5', '#C2410C'],
   PDF: ['#FEE2E2', '#B91C1C'],
@@ -296,9 +343,9 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
   // Filters live in the sheet behind the filter button: a session name (empty = all sessions) and a file type.
   const [session, setSession] = useState(initialSession);
   const [type, setType] = useState<(typeof materialTypes)[number]>('All types');
-  const [offline, setOffline] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(materialGroups.flatMap((g) => g.items).map((m) => [m.id, !!m.offline])),
-  );
+  const { offline } = useDemo();
+  const savedIds = Object.keys(offline).filter((id) => offline[id] === 'saved');
+  const savedMb = materialGroups.flatMap((g) => g.items).filter((m) => offline[m.id] === 'saved').reduce((sum, m) => sum + sizeMb(m.meta), 0);
   const active = (session.trim() ? 1 : 0) + (type !== 'All types' ? 1 : 0);
 
   const groups = useMemo(
@@ -332,6 +379,18 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
         </PressableScale>
       </View>
 
+      <View style={[s.offlineBar, { backgroundColor: brand.soft }]}>
+        <Ionicons name="cloud-done-outline" size={18} color={brand.primary} />
+        <Text style={[s.meta, { flex: 1, color: brand.dark }]}>
+          {savedIds.length === 0 ? 'No files saved for offline use yet.' : `${savedIds.length} file${savedIds.length === 1 ? '' : 's'} saved offline · ${savedMb.toFixed(1)} MB`}
+        </Text>
+        {savedIds.length > 0 && (
+          <PressableScale accessibilityRole="button" scaleTo={0.94} hitSlop={8} onPress={() => { savedIds.forEach(demoActions.removeOffline); notify('Offline copies removed'); }}>
+            <Text style={[s.meta, { color: brand.primary, fontWeight: '700' }]}>Remove all</Text>
+          </PressableScale>
+        )}
+      </View>
+
       {groups.length === 0 && <Text style={s.empty}>No materials match your search.</Text>}
 
       {groups.map((g) => (
@@ -344,7 +403,9 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
           </View>
           {g.items.map((m) => {
             const [bg, fg] = badgeColor[m.badge] ?? badgeColor.LINK;
-            const saved = offline[m.id];
+            const state = offline[m.id];
+            const saved = state === 'saved';
+            const saving = state === 'saving';
             return (
               <Card key={m.id} style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -356,6 +417,7 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
                     <View style={s.statusRow}>
                       <Text style={s.meta}>{m.meta}</Text>
                       {saved && <StatusPill label="Offline" tone="ok" />}
+                      {saving && <StatusPill label="Saving…" tone="info" />}
                     </View>
                     <Text style={s.meta}>{m.by}</Text>
                     <Text style={s.meta}>{m.uploaded}</Text>
@@ -368,13 +430,19 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
                   {m.type !== 'Link' && (
                     <PressableScale
                       style={[s.fileBtn, { backgroundColor: colors.bg }]}
+                      disabled={saving}
                       onPress={() => {
-                        setOffline((o) => ({ ...o, [m.id]: !o[m.id] }));
-                        notify(saved ? 'Offline copy removed' : 'Saved for offline use (sample)');
+                        if (saved) {
+                          demoActions.removeOffline(m.id);
+                          notify('Offline copy removed');
+                        } else {
+                          demoActions.saveOffline(m.id);
+                          notify('Saving for offline use (sample)');
+                        }
                       }}
                     >
                       <Text style={[s.fileBtnText, { color: colors.text }]}>
-                        {saved ? 'Remove offline copy' : 'Download for offline'}
+                        {saving ? 'Saving…' : saved ? 'Remove offline copy' : 'Download for offline'}
                       </Text>
                     </PressableScale>
                   )}
@@ -499,7 +567,7 @@ export function AttendanceTab({ title }: { title: string }) {
 
 const stateTone = { 'Not eligible': 'muted', Eligible: 'info', Released: 'ok' } as const;
 
-export function SubmissionsTab({ activity, open }: { activity: Activity; open: FormOpener }) {
+export function SubmissionsTab({ activity, open, onCertificate }: { activity: Activity; open: FormOpener; onCertificate: () => void }) {
   const brand = useBrand();
   const demo = useDemo();
   const completed = activity.status === 'Completed';
@@ -534,6 +602,7 @@ export function SubmissionsTab({ activity, open }: { activity: Activity; open: F
             </View>
           </View>
         ))}
+        {cert.state === 'Released' && <Button label="View certificate" onPress={onCertificate} />}
         <Text style={s.meta}>
           {certificateRules.release === 'Automatic'
             ? 'The certificate is released automatically once every requirement is met.'
@@ -589,5 +658,6 @@ const s = StyleSheet.create({
   fileBtnText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   attRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   attBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  offlineBar: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.sm, paddingHorizontal: 12, minHeight: 40 },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 24 },
 });

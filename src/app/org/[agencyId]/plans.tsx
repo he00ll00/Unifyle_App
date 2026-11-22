@@ -6,11 +6,12 @@ import { useBrand } from '@/components/Brand';
 import { ChecklistRows, FormOpener, useSubmissionForms } from '@/components/forms';
 import { useToast } from '@/components/sheets';
 import { Text } from '@/components/Text';
-import { Card, PressableScale, Segmented } from '@/components/ui';
+import { Button, Card, PressableScale, Segmented } from '@/components/ui';
 import { Activity, activitiesOf, agencies as sampleAgencies } from '@/data/mock';
 import { useStore } from '@/store/AppStore';
 import { certificateStatus, CertificateState, useDemo } from '@/store/demo';
 import { StatusPill } from '@/components/bits';
+import { CertificateView } from '@/components/CertificateView';
 import { colors, radius } from '@/theme';
 
 const TABS = ['Plans', 'Certificates'] as const;
@@ -23,6 +24,7 @@ export default function Plans() {
   const agency = agencies.find((a) => a.id === agencyId) ?? sampleAgencies[0];
   const brand = useBrand();
   const [tab, setTab] = useState<(typeof TABS)[number]>('Plans');
+  const [viewing, setViewing] = useState<Activity | null>(null);
   const list = activitiesOf(agency.id).filter((a) => a.status !== 'Upcoming').slice(0, 3);
   // The forms (and their activity dropdown) only offer activities that are completed.
   const { open, node } = useSubmissionForms(list.filter((a) => a.status === 'Completed'), notify);
@@ -58,6 +60,7 @@ export default function Plans() {
                 <CertCard
                   activity={a}
                   open={open}
+                  onCertificate={() => setViewing(a)}
                   onView={() =>
                     router.navigate({ pathname: '/org/[agencyId]/activity/[id]', params: { agencyId: agency.id, id: a.id } })
                   }
@@ -68,6 +71,14 @@ export default function Plans() {
         })}
       </ScrollView>
 
+      <CertificateView
+        activity={viewing}
+        onClose={() => setViewing(null)}
+        onDownload={() => {
+          setViewing(null);
+          notify('Certificate saved to your device (sample)');
+        }}
+      />
       {node}
       {toast}
     </View>
@@ -101,7 +112,7 @@ function Step({
 const stateTone = { 'Not eligible': 'muted', Eligible: 'info', Released: 'ok' } as const;
 const FORM_FOR: Record<string, 'feedback' | 'reentry' | 'outputs' | undefined> = { feedback: 'feedback', reentry: 'reentry', output: 'outputs' };
 
-function CertCard({ activity, open, onView }: { activity: Activity; open: FormOpener; onView: () => void }) {
+function CertCard({ activity, open, onView, onCertificate }: { activity: Activity; open: FormOpener; onView: () => void; onCertificate: () => void }) {
   const brand = useBrand();
   const demo = useDemo();
   const done = activity.status === 'Completed';
@@ -135,6 +146,7 @@ function CertCard({ activity, open, onView }: { activity: Activity; open: FormOp
               : 'Finish the requirements above to unlock your certificate.'}
         </Text>
       </View>
+      {state === 'Released' && <Button label="View certificate" onPress={onCertificate} />}
       <PressableScale accessibilityRole="button" onPress={onView} style={{ alignSelf: 'flex-start' }}>
         <Text style={[styles.link, { color: brand.primary }]}>View activity</Text>
       </PressableScale>

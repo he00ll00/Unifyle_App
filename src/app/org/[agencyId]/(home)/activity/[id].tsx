@@ -6,6 +6,7 @@ import { Text } from '@/components/Text';
 import { AttendanceTab, GoTo, MaterialsTab, OverviewTab, SessionFocus, SessionsTab, SubmissionsTab, TabName } from '@/components/ActivityTabs';
 import { useBrand } from '@/components/Brand';
 import { BottomSheet, StatusPill } from '@/components/bits';
+import { CertificateView } from '@/components/CertificateView';
 import { useSubmissionForms } from '@/components/forms';
 import { useToast } from '@/components/sheets';
 import { Button, PressableScale } from '@/components/ui';
@@ -28,6 +29,7 @@ export default function ActivityWorkspace() {
   const [options, setOptions] = useState(false);
   const [details, setDetails] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [certificate, setCertificate] = useState(false);
   const { notify, toast } = useToast();
   const forms = useSubmissionForms(activity ? [activity] : [], notify);
   const goTo: GoTo = (next, opts) => {
@@ -70,7 +72,7 @@ export default function ActivityWorkspace() {
           </View>
           <Text style={[styles.title, { color: brand.primary }]}>{activity.title}</Text>
           <Text style={styles.meta}>
-            {activity.dates} · {activity.progress.replace('Happening now · ', '')}
+            {activity.category} · {activity.dates} · {activity.progress.replace('Happening now · ', '')}
           </Text>
           <View style={styles.venue}>
             <Ionicons name="location-outline" size={13} color={colors.muted} />
@@ -100,7 +102,7 @@ export default function ActivityWorkspace() {
         )}
         {tab === 'Materials' && <MaterialsTab notify={notify} session={materialsFor} />}
         {tab === 'Attendance' && <AttendanceTab title={activity.title} />}
-        {tab === 'Submissions' && <SubmissionsTab activity={activity} open={forms.open} />}
+        {tab === 'Submissions' && <SubmissionsTab activity={activity} open={forms.open} onCertificate={() => setCertificate(true)} />}
       </ScrollView>
 
       {tab === 'Attendance' && (
@@ -150,7 +152,9 @@ export default function ActivityWorkspace() {
       <BottomSheet visible={details} onClose={() => setDetails(false)} title="Full activity details" subtitle={activity.title}>
         {[
           ['Registration', isRegistered(activity, demo.joined) ? 'Registered' : 'Not registered'],
-          ['Capacity', activity.capacity ? `${activity.capacity.taken} of ${activity.capacity.max} slots taken` : '41 of 50 slots taken'],
+          ['Capacity', activity.capacity ? `${activity.capacity.taken} of ${activity.capacity.max} slots taken` : '42 of 50 slots taken'],
+          ['Activity type', activity.category],
+          ['Status', activity.status],
           ['Min. attendance', `${certificateRules.minAttendance}% of check points`],
           ['Required for certificate', ['Feedback', 'Reentry plan', 'Output'].filter((_, i) => [certificateRules.requireFeedback, certificateRules.requireReentry, certificateRules.requireOutput][i]).join(', ')],
           ['Certificate release', certificateRules.release],
@@ -163,6 +167,14 @@ export default function ActivityWorkspace() {
         <Button label="Close" variant="soft" onPress={() => setDetails(false)} />
       </BottomSheet>
 
+      <CertificateView
+        activity={certificate ? activity : null}
+        onClose={() => setCertificate(false)}
+        onDownload={() => {
+          setCertificate(false);
+          notify('Certificate saved to your device (sample)');
+        }}
+      />
       {forms.node}
       {toast}
     </View>

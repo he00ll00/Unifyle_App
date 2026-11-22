@@ -8,22 +8,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBrand } from '@/components/Brand';
 import { DateBlock } from '@/components/bits';
 import { PressableScale } from '@/components/ui';
-import { activitiesOf, agencies as sampleAgencies, dateParts } from '@/data/mock';
-import { orgAbout } from '@/data/sample';
+import { Activity, activitiesOf, agencies as sampleAgencies, dateParts, isRegistered } from '@/data/mock';
+import { membershipExtras, orgAbout } from '@/data/sample';
 import { useStore } from '@/store/AppStore';
+import { useDemo } from '@/store/demo';
 import { colors, radius, shadow } from '@/theme';
 
 const TABS = ['Activities', 'About'] as const;
 
-// Example registration line per activity status, as in the design.
-const REGISTRATION = {
-  Ongoing: { label: 'Registered', open: false },
-  Completed: { label: 'Registered', open: false },
-  Upcoming: { label: 'Registration open · 9 slots left', open: true },
-} as const;
-
 // Design order: ongoing first, then completed, then upcoming (ties keep their listed order).
 const RANK = { Ongoing: 0, Completed: 1, Upcoming: 2 } as const;
+
+/** Registration line of an activity: upcoming ones show the free slots until the participant joins with its code. */
+function registrationLine(a: Activity, joined: Record<string, true>) {
+  if (isRegistered(a, joined)) return { label: 'Registered', open: false };
+  const left = a.capacity ? a.capacity.max - a.capacity.taken : 9;
+  return left > 0 ? { label: `Registration open · ${left} slots left`, open: true } : { label: 'Registration full', open: false };
+}
 
 /** Organization page: branded header with subscribe, then Activities / About. */
 export default function OrgPage() {
@@ -31,6 +32,7 @@ export default function OrgPage() {
   const { agencies } = useStore();
   const agency = agencies.find((a) => a.id === agencyId) ?? sampleAgencies[0];
   const brand = useBrand();
+  const demo = useDemo();
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<(typeof TABS)[number]>('Activities');
   const [subscribed, setSubscribed] = useState(true);
@@ -121,6 +123,21 @@ export default function OrgPage() {
           <View>
             {header}
             <Text style={styles.about}>{orgAbout.description}</Text>
+            <View style={styles.member}>
+              <Text style={styles.memberTitle}>My membership</Text>
+              {[
+                ['Role', agency.role],
+                ['Category', agency.category ?? 'Farmer'],
+                ['Affiliation', membershipExtras.affiliation],
+                ['Status', membershipExtras.status],
+                ['Joined', agency.memberSince || 'Today'],
+              ].map(([k, v]) => (
+                <View key={k} style={styles.memberRow}>
+                  <Text style={styles.factLabel}>{k}</Text>
+                  <Text style={[styles.factValue, k === 'Status' && { color: colors.success }]}>{v}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         }
         renderItem={({ item }) => (
@@ -143,7 +160,7 @@ export default function OrgPage() {
       ListEmptyComponent={<Text style={styles.empty}>No activities yet.</Text>}
       renderItem={({ item, index }) => {
         const date = dateParts(item);
-        const reg = REGISTRATION[item.status];
+        const reg = registrationLine(item, demo.joined);
         const first = index === 0;
         const last = index === data.length - 1;
         return (
@@ -205,6 +222,9 @@ const styles = StyleSheet.create({
   rowLast: { borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg },
   title: { fontSize: 14, fontWeight: '600', color: colors.text, lineHeight: 19 },
   reg: { fontSize: 12, fontWeight: '600' },
+  member: { backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 16, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 6, ...shadow },
+  memberTitle: { fontSize: 14, fontWeight: '700', color: colors.text, paddingVertical: 10 },
+  memberRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   about: { fontSize: 14, lineHeight: 20, color: colors.muted, padding: 16 },
   fact: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   factLabel: { fontSize: 14, color: colors.muted },

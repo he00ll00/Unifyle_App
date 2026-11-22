@@ -191,6 +191,7 @@ export const activities: Activity[] = [
     venue: 'PRRI Training Center, Zamboanga Sibugay',
     status: 'Ongoing',
     progress: 'Happening now · Day 2 of 3',
+    capacity: { max: 50, taken: 42 },
   },
   {
     id: 'rubber-nursery',
@@ -202,6 +203,7 @@ export const activities: Activity[] = [
     venue: 'Ipil, Zamboanga Sibugay',
     status: 'Ongoing',
     progress: 'Happening now · Day 2 of 3',
+    capacity: { max: 40, taken: 36 },
   },
   {
     id: 'budwood-assessment',
@@ -226,6 +228,7 @@ export const activities: Activity[] = [
     venue: 'Ipil, Zamboanga Sibugay',
     status: 'Completed',
     progress: 'Completed · May 22',
+    capacity: { max: 70, taken: 68 },
   },
   // ---- MAES ----
   {
@@ -385,5 +388,8 @@ export function dateParts(a: Activity) {
 
 /** Ongoing and completed activities are already registered; upcoming ones need the activity code. */
 export const isRegistered = (a: Activity, joined: Record<string, true>) => a.status !== 'Upcoming' || !!joined[a.id];
+
+/** Finds an organization, including ones joined with an invitation code. */
+export const findAgency = (id: string) => agencies.find((a) => a.id === id) ?? invitations.find((i) => i.agency.id === id)?.agency;
 
 export const activitiesOf = (agencyId: string) => activities.filter((a) => a.agencyId === agencyId);

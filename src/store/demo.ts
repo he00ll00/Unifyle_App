@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { Activity } from '@/data/mock';
-import { attendanceDone, attendanceTotal, certificateRules, OutputKind } from '@/data/sample';
+import { activities, Activity, findAgency, user } from '@/data/mock';
+import { attendanceDone, attendanceTotal, certificateRules, materialGroups, NotificationItem, notificationItems, OutputKind } from '@/data/sample';
 
 /**
  * Front-end-only demo state, so buttons show believable results while you click around
@@ -21,10 +21,16 @@ type DemoState = {
   outputs: Record<string, Output[]>;
   /** Activities joined with an activity code, keyed by activity id. */
   joined: Record<string, true>;
+  /** Notifications the participant has opened, keyed by notification id. */
+  read: Record<string, true>;
+  /** Materials kept for offline use: "saving" while the sample download runs. */
+  offline: Record<string, 'saved' | 'saving'>;
   invitation: 'pending' | 'accepted' | 'declined';
 };
 
-let state: DemoState = { feedback: {}, reentry: {}, outputs: {}, joined: {}, invitation: 'pending' };
+const seedOffline: DemoState['offline'] = Object.fromEntries(materialGroups.flatMap((g) => g.items).filter((m) => m.offline).map((m) => [m.id, 'saved' as const]));
+
+let state: DemoState = { feedback: {}, reentry: {}, outputs: {}, joined: {}, read: {}, offline: seedOffline, invitation: 'pending' };
 const listeners = new Set<() => void>();
 
 function update(next: DemoState) {
@@ -47,6 +53,20 @@ export const demoActions = {
   },
   joinActivity(activityId: string) {
     update({ ...state, joined: { ...state.joined, [activityId]: true } });
+  },
+  markRead(ids: string[]) {
+    update({ ...state, read: { ...state.read, ...Object.fromEntries(ids.map((id) => [id, true as const])) } });
+  },
+  /** Saves a material for offline use. The sample download takes a moment, then it shows as saved. */
+  saveOffline(id: string) {
+    update({ ...state, offline: { ...state.offline, [id]: 'saving' } });
+    setTimeout(() => {
+      if (state.offline[id] === 'saving') update({ ...state, offline: { ...state.offline, [id]: 'saved' } });
+    }, 900);
+  },
+  removeOffline(id: string) {
+    const { [id]: _removed, ...rest } = state.offline;
+    update({ ...state, offline: rest });
   },
   answerInvitation(answer: 'accepted' | 'declined') {
     update({ ...state, invitation: answer });
@@ -84,6 +104,49 @@ export function certificateStatus(demo: DemoState, activity: Activity) {
   return { requirements, state: result, pct };
 }
 
+
+/** Details printed on a released certificate (certificate table). */
+export function certificateInfo(a: Activity) {
+  const agency = findAgency(a.agencyId);
+  let h = 0;
+  for (const c of a.id) h = (h * 31 + c.charCodeAt(0)) % 9000;
+  const released = new Date(`${a.start}T00:00:00`);
+  released.setDate(released.getDate() + 3);
+  return {
+    number: `${agency?.short ?? 'TMIS'}-2025-${1000 + h}`,
+    participant: user.name,
+    agencyName: agency?.name ?? 'Host agency',
+    agencyShort: agency?.short ?? 'TMIS',
+    releasedOn: released.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+  };
+}
+
+export type NotificationRow = NotificationItem & { unread: boolean; certificate?: Activity };
+
+/** The updates list: sample updates plus a "certificate released" entry for every released certificate. */
+export function notificationsFor(demo: DemoState, agencyIds: string[]): NotificationRow[] {
+  const released: NotificationRow[] = activities
+    .filter((a) => agencyIds.includes(a.agencyId) && certificateStatus(demo, a).state === 'Released')
+    .map((a) => ({
+      id: `cert-${a.id}`,
+      agencyShort: findAgency(a.agencyId)?.short ?? '',
+      title: 'Certificate released',
+      body: `Your certificate for ${a.title} is ready to view.`,
+      when: 'Just now',
+      icon: 'ribbon-outline' as const,
+      link: { agencyId: a.agencyId, activityId: a.id },
+      certificate: a,
+      unread: !demo.read[`cert-${a.id}`],
+    }));
+  const items = notificationItems
+    .filter((n) => agencyIds.includes(n.link?.agencyId ?? ''))
+    .map((n) => ({ ...n, unread: !demo.read[n.id] }));
+  return [...released, ...items];
+}
+
+/** Unread updates plus a pending invitation, for the bell badge. */
+export const unreadCount = (demo: DemoState, agencyIds: string[]) =>
+  notificationsFor(demo, agencyIds).filter((n) => n.unread).length + (demo.invitation === 'pending' ? 1 : 0);
 export function useDemo() {
   return useSyncExternalStore(
     (cb) => {
