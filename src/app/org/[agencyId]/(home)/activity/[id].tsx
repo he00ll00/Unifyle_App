@@ -87,6 +87,8 @@ export default function ActivityWorkspace() {
               <PressableScale
                 key={t}
                 scaleTo={0.94}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === t }}
                 onPress={() => goTo(t)}
                 style={[styles.tab, tab === t && { backgroundColor: brand.primary }]}
               >

@@ -82,17 +82,18 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         accessibilityLabel={`Next session: ${nextSession.title}`}
         onPress={() => goTo('Sessions', { session: { id: nextSession.id, view: 'detail' } })}
       >
-        <Card style={{ gap: 4, borderLeftWidth: 4, borderLeftColor: brand.primary }}>
+        {/* A solid brand-colour card with white text, so it stands apart from the white cards below. */}
+        <Card style={{ gap: 4, backgroundColor: brand.primary }}>
           <View style={s.between}>
-            <Text style={s.kicker}>{nextSession.status === 'In progress' ? 'HAPPENING NOW' : 'UP NEXT'}</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+            <Text style={[s.kicker, { color: 'rgba(255,255,255,0.85)' }]}>{nextSession.status === 'In progress' ? 'HAPPENING NOW' : 'UP NEXT'}</Text>
+            <Ionicons name="chevron-forward" size={16} color="#fff" />
           </View>
-          <Text style={s.h}>{nextSession.title}</Text>
-          <Text style={s.meta}>
+          <Text style={[s.h, { color: '#fff' }]}>{nextSession.title}</Text>
+          <Text style={[s.meta, { color: '#fff' }]}>
             {nextSession.date} · {nextSession.range}
           </Text>
-          <Text style={s.meta}>{nextSession.venue}</Text>
-          <Text style={[s.meta, { color: brand.primary, fontWeight: '600' }]}>{nextSession.speaker}</Text>
+          <Text style={[s.meta, { color: '#fff' }]}>{nextSession.venue}</Text>
+          <Text style={[s.meta, { color: '#fff', fontWeight: '700' }]}>{nextSession.speaker}</Text>
         </Card>
       </PressableScale>
 

@@ -117,8 +117,9 @@ export default function OrgPage() {
     return (
       <FlatList
         style={{ flex: 1, backgroundColor: colors.bg }}
-        data={orgAbout.facts}
-        keyExtractor={(f) => f[0]}
+        data={[]}
+        keyExtractor={(_, i) => String(i)}
+        contentContainerStyle={{ paddingBottom: 24 }}
         ListHeaderComponent={
           <View>
             {header}
@@ -138,14 +139,18 @@ export default function OrgPage() {
                 </View>
               ))}
             </View>
+            <View style={styles.member}>
+              <Text style={styles.memberTitle}>Organization details</Text>
+              {orgAbout.facts.map(([k, v]) => (
+                <View key={k} style={styles.memberRow}>
+                  <Text style={styles.factLabel}>{k}</Text>
+                  <Text style={styles.factValue}>{v}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={styles.fact}>
-            <Text style={styles.factLabel}>{item[0]}</Text>
-            <Text style={styles.factValue}>{item[1]}</Text>
-          </View>
-        )}
+        renderItem={() => null}
       />
     );
   }
@@ -224,10 +229,11 @@ const styles = StyleSheet.create({
   reg: { fontSize: 12, fontWeight: '600' },
   member: { backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 16, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 6, ...shadow },
   memberTitle: { fontSize: 14, fontWeight: '700', color: colors.text, paddingVertical: 10 },
-  memberRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  memberRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   about: { fontSize: 14, lineHeight: 20, color: colors.muted, padding: 16 },
-  fact: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  factLabel: { fontSize: 14, color: colors.muted },
-  factValue: { fontSize: 14, fontWeight: '600', color: colors.text },
+  fact: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  factLabel: { fontSize: 14, color: colors.muted, flexShrink: 0 },
+  // Long values wrap inside the card instead of running past its edge.
+  factValue: { fontSize: 14, fontWeight: '600', color: colors.text, flex: 1, flexShrink: 1, textAlign: 'right' },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 32 },
 });
