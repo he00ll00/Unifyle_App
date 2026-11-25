@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useId, useMemo, useState } from 'react';
+import { Alert, FlatList, Platform, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { ClipPath, Circle, Defs, Ellipse, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Defs, Ellipse, LinearGradient, Path, Stop } from 'react-native-svg';
+import { Avatar } from '@/components/Avatar';
 import { BottomSheet } from '@/components/bits';
 import { JoinOrgModal } from '@/components/JoinOrgModal';
 import { Button, PressableScale } from '@/components/ui';
@@ -25,11 +26,15 @@ const FOLDER =
 
 /** One organization shown as a folder: blue-to-color gradient, white text, "…" at the top-right. */
 function FolderCard({ agency, onPress, onMenu }: { agency: Agency; onPress: () => void; onMenu: () => void }) {
-  const id = `g-${agency.id}`;
+  // The gradient id must be unique per card instance. On the web, a page that stays mounted behind another one
+  // (after going back to Workspaces) would otherwise share the id, and the card drew its fill from the hidden copy.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const id = `g-${agency.id}-${uid}`;
   return (
     <PressableScale
       scaleTo={0.97}
-      accessibilityRole="button"
+      // On the web a button cannot contain the "…" button, so the card is only a button on phones.
+      accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
       accessibilityLabel={`Open ${agency.name}`}
       onPress={onPress}
       style={styles.cardWrap}
@@ -43,12 +48,8 @@ function FolderCard({ agency, onPress, onMenu }: { agency: Agency; onPress: () =
               <Stop offset="0" stopColor={FOLDER_START} />
               <Stop offset="1" stopColor={agency.cardEnd ?? agency.brand} />
             </LinearGradient>
-            <ClipPath id={`c-${agency.id}`}>
-              <Path d={FOLDER} />
-            </ClipPath>
           </Defs>
           <Path d={FOLDER} fill={`url(#${id})`} />
-          <Circle cx={336} cy={136} r={78} fill="#FFFFFF" fillOpacity={0.055} clipPath={`url(#c-${agency.id})`} />
           <Ellipse cx={307.6} cy={45.5} rx={2.5} ry={2.59} fill="#FFFFFF" />
           <Ellipse cx={314.5} cy={45.6} rx={2.5} ry={2.59} fill="#FFFFFF" />
           <Ellipse cx={321.4} cy={45.7} rx={2.5} ry={2.59} fill="#FFFFFF" />
@@ -88,7 +89,7 @@ function InvitationCard({ onAccept, onDecline }: { onAccept: () => void; onDecli
           <Text style={styles.inviteLogoText}>{n.short}</Text>
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={styles.inviteKicker}>INVITATION</Text>
+          <Text style={styles.inviteKicker}>Invitation</Text>
           <Text style={styles.inviteTitle}>{n.name}</Text>
           <Text style={styles.inviteMeta}>{n.by}</Text>
           <Text style={styles.inviteMeta}>{n.expires}</Text>
@@ -101,9 +102,6 @@ function InvitationCard({ onAccept, onDecline }: { onAccept: () => void; onDecli
     </View>
   );
 }
-
-// The "you have an invitation" pop-up shows once each time the app is opened
-let invitePopupShown = false;
 
 type MenuIcon = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -122,18 +120,14 @@ export default function Workspaces() {
   const insets = useSafeAreaInsets();
   const [q, setQ] = useState('');
   const [joinOpen, setJoinOpen] = useState(false);
-  const { agencies, leaveAgency, moveAgency } = useStore();
+  const { agencies, leaveAgency, moveAgency, joinAgency } = useStore();
   const demo = useDemo();
   const unread = unreadCount(demo, agencies.map((a) => a.id));
   const [menuFor, setMenuFor] = useState<Agency | null>(null);
   const [noAccess, setNoAccess] = useState(false);
-  const [popup, setPopup] = useState(() => !invitePopupShown && demo.invitation === 'pending');
   const { notify, toast } = useToast();
   const revoked = membershipNotices.revoked;
   const pending = membershipNotices.pending;
-  useEffect(() => {
-    invitePopupShown = true;
-  }, []);
   const menuIndex = menuFor ? agencies.findIndex((a) => a.id === menuFor.id) : -1;
   const list = useMemo(
     () => agencies.filter((a) => a.name.toLowerCase().includes(q.trim().toLowerCase())),
@@ -157,18 +151,19 @@ export default function Workspaces() {
               </View>
             )}
           </PressableScale>
-          <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel="Profile"
-            onPress={() => router.push('/profile')}
-            style={[styles.circle, { backgroundColor: MAIN }]}
-          >
-            <Text style={styles.avatarText}>{user.firstName[0]}</Text>
-          </PressableScale>
+          <View style={styles.headerActions}>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Messages" onPress={() => router.push('/messages')} style={styles.circle}>
+              <Ionicons name="chatbubbles-outline" size={22} color={GRAY} />
+            </PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push('/profile')} style={styles.circle}>
+              <Avatar name={user.name} size={40} />
+            </PressableScale>
+          </View>
         </View>
 
-        <Text style={styles.hello}>Hello, {user.firstName}!</Text>
-        <Text style={styles.sub}>Welcome to your workspace</Text>
+        <Text style={styles.hello} accessibilityRole="header">
+          Workspaces
+        </Text>
 
         <View style={styles.searchRow}>
           <View style={styles.search}>
@@ -194,8 +189,11 @@ export default function Workspaces() {
         {demo.invitation === 'pending' && (
           <InvitationCard
             onAccept={() => {
+              // Joining adds the organization's card to the list right away; the toast goes away by itself.
+              const res = joinAgency(pending.code, 'Farmer');
+              if (!res.ok && !res.error.startsWith('You are already')) return notify(res.error);
               demoActions.answerInvitation('accepted');
-              notify(`You joined ${pending.short} (sample)`);
+              notify(`You joined ${pending.short}`);
             }}
             onDecline={() => {
               demoActions.answerInvitation('declined');
@@ -203,15 +201,6 @@ export default function Workspaces() {
             }}
           />
         )}
-        {demo.invitation === 'accepted' && (
-          <View style={styles.joined}>
-            <Ionicons name="checkmark-circle" size={22} color={colors.success} />
-            <Text style={styles.joinedText}>You joined {pending.name}. It will appear below once it is set up.</Text>
-          </View>
-        )}
-        <Text style={styles.sectionLabel} accessibilityRole="header">
-          My workspaces
-        </Text>
       </View>
   );
 
@@ -309,21 +298,6 @@ export default function Workspaces() {
         <Button label="Close" size="lg" variant="soft" onPress={() => setNoAccess(false)} />
       </BottomSheet>
 
-      {/* Shown once when the app opens and an invitation is waiting */}
-      <Modal visible={popup && demo.invitation === 'pending'} transparent animationType="fade" onRequestClose={() => setPopup(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setPopup(false)} accessibilityLabel="Close" />
-        <View style={styles.popupLayer} pointerEvents="box-none">
-          <View style={styles.popup}>
-            <View style={styles.popupIcon}>
-              <Ionicons name="mail-unread-outline" size={30} color={colors.primary} />
-            </View>
-            <Text style={styles.popupTitle}>You have an invitation</Text>
-            <Text style={styles.popupText}>{pending.name} invited you to join their workspace.</Text>
-            <Button label="Join now" size="lg" onPress={() => { demoActions.answerInvitation('accepted'); setPopup(false); notify(`You joined ${pending.short} (sample)`); }} />
-            <Button label="Later" size="lg" variant="soft" onPress={() => setPopup(false)} />
-          </View>
-        </View>
-      </Modal>
       {toast}
     </View>
   );
@@ -335,6 +309,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#FFFFFF' },
   header: { paddingHorizontal: 15, backgroundColor: '#FFFFFF' },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   circle: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF',
     alignItems: 'center', justifyContent: 'center', ...shadow,
@@ -359,7 +334,7 @@ const styles = StyleSheet.create({
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 52 },
   menuText: { fontSize: 16, fontWeight: '500' },
   cardText: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 34, paddingBottom: 17 },
-  short: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', letterSpacing: 1.2, lineHeight: 16, marginBottom: 2, textAlign: 'left', alignSelf: 'flex-start' },
+  short: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', letterSpacing: 0.4, lineHeight: 16, marginBottom: 2, textAlign: 'left', alignSelf: 'flex-start' },
   agency: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', lineHeight: 25, textAlign: 'left', alignSelf: 'flex-start', maxWidth: '68%' },
   meta: { color: '#FFFFFF', fontSize: 12, lineHeight: 18, textAlign: 'left', alignSelf: 'flex-start', maxWidth: '85%' },
   empty: { textAlign: 'center', color: GRAY, marginTop: 32 },
@@ -368,7 +343,7 @@ const styles = StyleSheet.create({
   inviteHead: { flexDirection: 'row', gap: 14 },
   inviteLogo: { width: 52, height: 52, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   inviteLogoText: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  inviteKicker: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: colors.warn },
+  inviteKicker: { fontSize: 12, fontWeight: '600', color: colors.warn },
   inviteTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
   inviteMeta: { fontSize: 14, color: colors.muted },
   joined: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.successSoft, borderRadius: 14, padding: 14, marginBottom: 16 },
@@ -379,10 +354,4 @@ const styles = StyleSheet.create({
   lockedTitle: { fontSize: 16, fontWeight: '600', color: colors.muted },
   lockedMeta: { fontSize: 14, color: colors.danger },
   sheetText: { fontSize: 15, lineHeight: 22, color: colors.muted },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(20,30,60,0.35)' },
-  popupLayer: { flex: 1, justifyContent: 'center', padding: 24 },
-  popup: { backgroundColor: '#fff', borderRadius: 24, padding: 24, gap: 12, alignItems: 'stretch' },
-  popupIcon: { alignSelf: 'center', width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  popupTitle: { fontSize: 22, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  popupText: { fontSize: 16, lineHeight: 23, color: colors.muted, textAlign: 'center', marginBottom: 6 },
 });

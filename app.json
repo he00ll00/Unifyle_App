@@ -1,24 +1,22 @@
 {
   "expo": {
-    "name": "UniFyle_App",
+    "name": "UniFyle",
     "slug": "UniFyle_App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/unifyle-app-icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#EDF4FF",
+        "foregroundImage": "./assets/unifyle-adaptive-icon.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/unifyle-favicon.png"
     },
     "scheme": "unifyle",
     "experiments": {
@@ -26,7 +24,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "UniFyle uses your photos to set your profile picture.",
+          "cameraPermission": "UniFyle uses the camera to take your profile picture."
+        }
+      ]
     ]
   }
 }

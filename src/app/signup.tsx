@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import { AuthField, ChoiceList, PickerField, PickOption, StepScreen } from '@/components/auth';
-import { Logo } from '@/components/bits';
+import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/ui';
 import { colors } from '@/theme';
@@ -184,7 +184,6 @@ export default function Signup() {
       <StepScreen
         stepKey={0}
         title="Create your account"
-        subtitle="It takes about 3 minutes. You only do this once, and one account works for every agency."
         onBack={back}
         footer={
           <>
@@ -209,7 +208,6 @@ export default function Signup() {
             </View>
           ))}
         </View>
-        <Text style={s.note}>You can stop at any time. We keep your answers on this phone so you can continue later.</Text>
       </StepScreen>
     );
 
@@ -218,8 +216,7 @@ export default function Signup() {
     return (
       <StepScreen
         stepKey={DONE}
-        title={`You’re all set, ${form.firstName.trim() || 'friend'}!`}
-        subtitle="Your account is ready. Next, join your agency using the invitation code they gave you, or accept an invitation sent to your email."
+        title={`You’re all set, ${form.firstName.trim() || 'friend'}`}
         onBack={() => router.replace('/workspaces')}
         footer={<Button label="Go to my workspaces" size="lg" onPress={() => router.replace('/workspaces')} />}
       >
@@ -228,11 +225,6 @@ export default function Signup() {
             <Ionicons name="checkmark" size={56} color="#fff" />
           </View>
         </View>
-        <View style={s.panel}>
-          <Text style={s.panelTitle}>How to join an agency</Text>
-          <Text style={s.bulletText}>In your workspaces, tap the + button and type the invitation code. If an agency already invited your email, it will be waiting there for you.</Text>
-        </View>
-        <Text style={s.note}>This is a preview. Nothing is sent to a server yet.</Text>
       </StepScreen>
     );
 
@@ -248,7 +240,7 @@ export default function Signup() {
   );
 
   return (
-    <StepScreen stepKey={step} forward={forward} progress={{ step, total: TOTAL }} onBack={back} footer={footer} {...copy(step)} {...(step === 3 && needPassword ? { subtitle: 'Welcome back! For your safety we don’t save your password, so please type it again.' } : {})}>
+    <StepScreen stepKey={step} forward={forward} progress={{ step, total: TOTAL }} onBack={back} footer={footer} {...copy(step)} {...(step === 3 && needPassword ? { subtitle: 'Type your password again' } : {})}>
       {step === 1 && (
         <>
           <AuthField label="First name" value={form.firstName} onChangeText={(v) => set({ firstName: v })} error={errors.firstName} autoCapitalize="words" autoComplete="given-name" textContentType="givenName" returnKeyType="next" autoFocus />
@@ -263,7 +255,6 @@ export default function Signup() {
           value={form.email}
           onChangeText={(v) => set({ email: v })}
           error={errors.email}
-          hint="You will use this to sign in. It also lets agencies send you invitations."
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="email"
@@ -277,7 +268,7 @@ export default function Signup() {
 
       {step === 3 && (
         <>
-          <AuthField label="Password" secure value={form.password} onChangeText={(v) => set({ password: v })} error={errors.password} hint="At least 8 characters. A short sentence you can remember works well." autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" returnKeyType="next" autoFocus />
+          <AuthField label="Password" secure value={form.password} onChangeText={(v) => set({ password: v })} error={errors.password} hint="At least 8 characters" autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" returnKeyType="next" autoFocus />
           <AuthField label="Type your password again" secure value={form.confirm} onChangeText={(v) => set({ confirm: v })} error={errors.confirm} autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" returnKeyType="done" onSubmitEditing={next} />
         </>
       )}
@@ -310,7 +301,7 @@ export default function Signup() {
         <>
           <AuthField label="Province" value={form.province} onChangeText={(v) => set({ province: v })} error={errors.province} placeholder="e.g. Zamboanga Sibugay" autoCapitalize="words" returnKeyType="next" autoFocus />
           <AuthField label="Municipality or city" value={form.municipality} onChangeText={(v) => set({ municipality: v })} error={errors.municipality} placeholder="e.g. Ipil" autoCapitalize="words" returnKeyType="next" />
-          <AuthField label="Mobile number" optional value={form.contact} onChangeText={(v) => set({ contact: v })} error={errors.contact} hint="So your agency can reach you about activities." placeholder="0917 123 4567" keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" returnKeyType="done" onSubmitEditing={next} />
+          <AuthField label="Mobile number" optional value={form.contact} onChangeText={(v) => set({ contact: v })} error={errors.contact} placeholder="0917 123 4567" keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" returnKeyType="done" onSubmitEditing={next} />
         </>
       )}
 
@@ -323,12 +314,12 @@ function copy(step: number): { title: string; subtitle?: string } {
   return (
     [
       { title: '' },
-      { title: 'What is your name?', subtitle: 'Write it the way it appears on your ID.' },
+      { title: 'What is your name?' },
       { title: 'What is your email address?' },
-      { title: 'Choose a password', subtitle: 'You will use it to sign in.' },
+      { title: 'Choose a password' },
       { title: 'A little about you' },
       { title: 'Where do you live?' },
-      { title: 'Check your details', subtitle: 'Make sure everything is right, then create your account. You can tap Change to fix anything.' },
+      { title: 'Check your details' },
     ][step] ?? { title: '' }
   );
 }

@@ -96,13 +96,13 @@ export function MaterialViewer({
                   >
                     {i === 0 ? (
                       <>
-                        <Text style={[styles.slideKicker, { color: '#FFFFFF' }]}>PRRI · SKILLS TRAINING</Text>
+                        <Text style={[styles.slideKicker, { color: '#FFFFFF' }]}>PRRI · Skills training</Text>
                         <Text style={[styles.slideTitle, { color: '#FFFFFF' }]}>{material.title}</Text>
                         <Text style={[styles.slideBody, { color: '#FFFFFF' }]}>Philippine Rubber Research Institute</Text>
                       </>
                     ) : (
                       <>
-                        <Text style={[styles.slideKicker, { color: brand.primary }]}>SLIDE {i + 1}</Text>
+                        <Text style={[styles.slideKicker, { color: brand.primary }]}>Slide {i + 1}</Text>
                         <Text style={[styles.slideHeading, { color: colors.text }]}>{sl.heading}</Text>
                         {sl.bullets.map((b) => (
                           <View key={b} style={styles.bullet}>
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   slide: {
     aspectRatio: 16 / 10, borderRadius: radius.lg, padding: 20, justifyContent: 'center', gap: 10, ...shadow,
   },
-  slideKicker: { fontSize: 12, fontWeight: '700', letterSpacing: 0.8 },
+  slideKicker: { fontSize: 12, fontWeight: '600' },
   slideTitle: { fontSize: 24, fontWeight: '700', lineHeight: 30 },
   slideHeading: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
   slideBody: { fontSize: 14, lineHeight: 20 },

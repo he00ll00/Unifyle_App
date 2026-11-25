@@ -162,6 +162,20 @@ export const invitations: Invitation[] = [
     uses: 0,
   },
   {
+    code: 'DABAR-0001',
+    agency: {
+      id: 'dabar',
+      name: 'DA Bureau of Agricultural Research',
+      short: 'DA BAR',
+      role: 'Participant',
+      region: 'Quezon City',
+      memberSince: '',
+      brand: '#0F766E',
+      cardEnd: '#2DD4BF',
+    },
+    uses: 0,
+  },
+  {
     code: 'OLD-0001',
     agency: {
       id: 'old',

@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Bell, BellRing, ChevronLeft, Landmark, MapPin, Share2 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Linking, Share, StyleSheet, View } from 'react-native';
+import { FlatList, Linking, Pressable, Share, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthField } from '@/components/auth';
 import { BottomSheet } from '@/components/bits';
 import { useBrand } from '@/components/Brand';
+import { FullscreenImage } from '@/components/FullscreenImage';
 import { HeroArt } from '@/components/HeroArt';
 import { ActivityCard } from '@/components/cards';
 import { useToast } from '@/components/sheets';
@@ -47,6 +48,7 @@ export default function OrgPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>('Activities');
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Upcoming');
   const [subscribed, setSubscribed] = useState(true);
+  const [viewer, setViewer] = useState<'logo' | 'cover' | null>(null);
   const [registering, setRegistering] = useState<Activity | null>(null);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | undefined>();
@@ -84,33 +86,45 @@ export default function OrgPage() {
     <View>
       {/* Band: the agency's colour with a quiet drawing. Back on the left, share on the right. */}
       <HeroArt height={150 + insets.top} variant="agency">
-        <View style={[s.heroBar, { top: insets.top + 8 }]}>
+        {/* Tapping the band opens it full screen. It sits under the back and share buttons, not around them. */}
+        <Pressable accessibilityRole="imagebutton" accessibilityLabel="View cover photo" onPress={() => setViewer('cover')} style={StyleSheet.absoluteFill} />
+        <View style={[s.heroBar, { top: insets.top + 8 }]} pointerEvents="box-none">
           <PressableScale accessibilityRole="button" accessibilityLabel="Back to workspaces" onPress={() => router.replace('/workspaces')} style={s.heroBtn}>
             <ChevronLeft size={22} color="#fff" />
           </PressableScale>
-          <PressableScale accessibilityRole="button" accessibilityLabel="Share this agency" onPress={share} style={s.heroBtn}>
-            <Share2 size={19} color="#fff" />
-          </PressableScale>
+          <View style={s.heroActions} pointerEvents="box-none">
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${agency.short} group chat`}
+              onPress={() => router.push({ pathname: '/messages/[agencyId]', params: { agencyId: agency.id } })}
+              style={s.heroBtn}
+            >
+              <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
+            </PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Share this agency" onPress={share} style={s.heroBtn}>
+              <Share2 size={19} color="#fff" />
+            </PressableScale>
+          </View>
         </View>
       </HeroArt>
 
       {/* Who they are. Edge to edge and left-aligned, like the public page on the web: the logo sits on the left. */}
       <View style={s.sheet}>
         <View style={s.idRow}>
-          <View style={s.logoRing} accessible accessibilityLabel={`${agency.name} logo`}>
+          <PressableScale scaleTo={0.96} accessibilityRole="imagebutton" accessibilityLabel={`${agency.name} logo, open full screen`} onPress={() => setViewer('logo')} style={s.logoRing}>
             <View style={[s.logo, { backgroundColor: agency.logoColor ?? brand.dark }]}>
               <Text style={s.logoText} numberOfLines={1} adjustsFontSizeToFit>
                 {agency.short}
               </Text>
             </View>
-          </View>
+          </PressableScale>
           <PressableScale accessibilityRole="button" accessibilityState={{ selected: subscribed }} scaleTo={0.96} onPress={() => setSubscribed((v) => !v)} style={[s.sub, subscribed ? s.subOn : { backgroundColor: brand.primary }]}>
             {subscribed ? <BellRing size={18} color={brand.primary} /> : <Bell size={18} color="#fff" />}
             <Text style={[s.subText, { color: subscribed ? brand.primary : '#fff' }]}>{subscribed ? 'Subscribed' : 'Subscribe'}</Text>
           </PressableScale>
         </View>
 
-        <Text style={s.name} accessibilityRole="header">
+        <Text style={[s.name, { color: brand.dark }]} accessibilityRole="header">
           {agency.name}
         </Text>
         <Text style={s.handle}>{handle}</Text>
@@ -169,7 +183,6 @@ export default function OrgPage() {
   const sheet = (
     <BottomSheet visible={registering !== null} onClose={closeRegister} title="Register" subtitle={registering?.title}>
       <View style={{ gap: 16 }}>
-        <Text style={s.sheetText}>Type the activity code your agency gave you. It confirms that you are invited to this activity.</Text>
         <AuthField label="Activity code" value={code} onChangeText={(v) => { setCode(v); setCodeError(undefined); }} error={codeError} placeholder="e.g. PRRI-2025-A" autoCapitalize="characters" autoCorrect={false} returnKeyType="done" onSubmitEditing={register} />
         <Button label="Register" size="lg" onPress={register} />
       </View>
@@ -189,11 +202,11 @@ export default function OrgPage() {
             tab === 'About' ? (
               <View style={{ gap: 14, padding: 16 }}>
                 <View style={s.box}>
-                  <Text style={s.boxTitle}>About</Text>
+                  <Text style={[s.boxTitle, { color: brand.dark }]}>About</Text>
                   <Text style={s.about}>{orgAbout.description}</Text>
                 </View>
                 <View style={s.box}>
-                  <Text style={s.boxTitle}>Organization details</Text>
+                  <Text style={[s.boxTitle, { color: brand.dark }]}>Organization details</Text>
                   {orgAbout.facts.map(([k, v]) => (
                     <View key={k} style={s.kv}>
                       <Text style={s.k}>{k}</Text>
@@ -202,7 +215,7 @@ export default function OrgPage() {
                   ))}
                 </View>
                 <View style={s.box}>
-                  <Text style={s.boxTitle}>My membership</Text>
+                  <Text style={[s.boxTitle, { color: brand.dark }]}>My membership</Text>
                   {[
                     ['Role', agency.role],
                     ['Category', agency.category ?? 'Farmer'],
@@ -220,7 +233,7 @@ export default function OrgPage() {
             ) : (
               <View style={{ padding: 16 }}>
                 <View style={s.box}>
-                  <Text style={s.boxTitle}>Get in touch</Text>
+                  <Text style={[s.boxTitle, { color: brand.dark }]}>Get in touch</Text>
                   {[
                     { icon: 'mail-outline' as const, label: 'Email', value: contact.email, url: `mailto:${contact.email}` },
                     { icon: 'globe-outline' as const, label: 'Website', value: contact.website, url: `https://${contact.website}` },
@@ -244,6 +257,7 @@ export default function OrgPage() {
             )
           }
         />
+        <FullscreenImage kind={viewer} agency={agency} onClose={() => setViewer(null)} />
         {toast}
       </View>
     );
@@ -263,6 +277,7 @@ export default function OrgPage() {
         }}
       />
       {sheet}
+      <FullscreenImage kind={viewer} agency={agency} onClose={() => setViewer(null)} />
       {toast}
     </View>
   );
@@ -270,6 +285,7 @@ export default function OrgPage() {
 
 const s = StyleSheet.create({
   heroBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
+  heroActions: { flexDirection: 'row', gap: 10 },
   heroBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   sheet: { backgroundColor: '#fff', marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingBottom: 18, gap: 4 },
   idRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: -44, marginBottom: 10 },

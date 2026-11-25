@@ -8,7 +8,7 @@ import { StatusPill } from '@/components/bits';
 import { Text, TextInput } from '@/components/Text';
 import { Button, Card, Chip, PressableScale } from '@/components/ui';
 import type { Activity } from '@/data/mock';
-import { allSessions, certificateRules, feedbackForm, OutputKind, outputKinds, reentryFields } from '@/data/sample';
+import { allSessions, feedbackForm, OutputKind, outputKinds, reentryFields } from '@/data/sample';
 import { demoActions, FeedbackAnswers, useDemo } from '@/store/demo';
 import { colors, radius } from '@/theme';
 
@@ -53,13 +53,12 @@ function Question({ label, required, error, children }: { label: string; require
 }
 
 /** Header card of a form: coloured top edge, title and a short note. */
-function FormHeader({ title, note, children }: { title: string; note: string; children?: ReactNode }) {
+function FormHeader({ title, children }: { title: string; children?: ReactNode }) {
   const brand = useBrand();
   return (
     <Card style={{ gap: 6, paddingTop: 0 }}>
       <View style={[styles.headerEdge, { backgroundColor: brand.primary }]} />
       <Text style={styles.formTitle}>{title}</Text>
-      <Text style={styles.hint}>{note}</Text>
       {children}
     </Card>
   );
@@ -158,7 +157,7 @@ function FeedbackForm({ visible, onClose, activities, activityId, notify }: { vi
     setTried(true);
     if (feedbackForm.questions.some((q) => q.required && !answers[q.id])) return;
     demoActions.submitFeedback(activity.id, answers, anonymous);
-    notify('Feedback submitted. Thank you!');
+    notify('Feedback submitted');
     close();
   };
 
@@ -178,7 +177,7 @@ function FeedbackForm({ visible, onClose, activities, activityId, notify }: { vi
         )
       }
     >
-      <FormHeader title={feedbackForm.title} note={feedbackForm.intro}>
+      <FormHeader title={feedbackForm.title}>
         <View style={styles.row}>
           {sent ? <StatusPill label="Submitted" tone="ok" /> : <Text style={[styles.hint, { color: colors.danger }]}>* Required</Text>}
         </View>
@@ -260,7 +259,6 @@ function FeedbackForm({ visible, onClose, activities, activityId, notify }: { vi
         <Card style={styles.anon}>
           <View style={{ flex: 1 }}>
             <Text style={styles.q}>Send anonymously</Text>
-            <Text style={styles.hint}>The organization will not see your name with this feedback.</Text>
           </View>
           <Switch
             value={sent ? sent.anonymous : anonymous}
@@ -327,7 +325,7 @@ function ReentryForm({ visible, onClose, activities, activityId, notify }: { vis
         )
       }
     >
-      <FormHeader title="Reentry plan" note="Describe how you will apply what you learned after the activity.">
+      <FormHeader title="Reentry plan">
         <View style={styles.row}>
           {submitted ? <StatusPill label="Submitted" tone="ok" /> : saved ? <StatusPill label="Draft" tone="info" /> : <Text style={[styles.hint, { color: colors.danger }]}>* Required</Text>}
         </View>
@@ -440,7 +438,7 @@ function OutputForm({ visible, onClose, activities, activityId, notify }: { visi
 
   return (
     <FormModal visible={visible} onClose={close} title="Output submission" footer={<Button label="Done" variant="soft" onPress={close} />}>
-      <FormHeader title="Output submission" note="Submit a photo, file or video of what you made or practised during the activity." />
+      <FormHeader title="Output submission" />
 
       <Dropdown
         label="Activity"
@@ -573,28 +571,28 @@ export function ChecklistRows({ activity, open, locked }: { activity: Activity; 
   const demo = useDemo();
   const plan = demo.reentry[activity.id];
   const outputs = demo.outputs[activity.id]?.length ?? 0;
-  const lockedNote = 'Opens after the activity';
 
+  // While the activity is not completed the rows are just locked: no explanation under each one.
   const rows = [
     {
       key: 'feedback',
       label: 'Activity feedback',
       done: !!demo.feedback[activity.id],
-      note: locked ? lockedNote : demo.feedback[activity.id] ? 'Submitted' : 'Not submitted',
+      note: locked ? undefined : demo.feedback[activity.id] ? 'Submitted' : 'Not submitted',
       onPress: () => open.feedback(activity.id),
     },
     {
       key: 'reentry',
       label: 'Reentry plan',
       done: plan?.status === 'submitted',
-      note: locked ? lockedNote : plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft saved') : 'Not started',
+      note: locked ? undefined : plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft saved') : 'Not started',
       onPress: () => open.reentry(activity.id),
     },
     {
       key: 'outputs',
       label: 'Output submission',
       done: outputs > 0,
-      note: locked ? lockedNote : outputs > 0 ? `${outputs} submitted` : certificateRules.requireOutput ? 'Required for the certificate' : 'Optional',
+      note: locked ? undefined : outputs > 0 ? `${outputs} submitted` : 'Not submitted',
       onPress: () => open.outputs(activity.id),
     },
   ];
@@ -617,9 +615,9 @@ export function ChecklistRows({ activity, open, locked }: { activity: Activity; 
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>{r.label}</Text>
-            <Text style={styles.hint}>{r.note}</Text>
+            {r.note ? <Text style={styles.hint}>{r.note}</Text> : null}
           </View>
-          {!locked && <Ionicons name="chevron-forward" size={16} color={colors.muted} />}
+          {!locked &&<Ionicons name="chevron-forward" size={16} color={colors.muted} />}
         </PressableScale>
       ))}
     </View>
@@ -657,7 +655,7 @@ const styles = StyleSheet.create({
   file: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 },
   kinds: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   kindIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52 },
   checkBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   rowTitle: { fontSize: 14, fontWeight: '600', color: colors.text },
 });

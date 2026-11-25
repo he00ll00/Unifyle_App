@@ -34,13 +34,7 @@ export default function Plans() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
         <Segmented options={TABS} value={tab} onChange={setTab} />
 
-        <Text style={styles.meta}>
-          {tab === 'Plans'
-            ? `Feedback, reentry plans and output submissions open once an activity is completed.`
-            : `Certificates are released by ${agency.short} once you meet the activity requirements.`}
-        </Text>
-
-        {list.length === 0 && <Text style={styles.empty}>Nothing here yet.</Text>}
+        {list.length === 0 && <Text style={styles.empty}>Nothing here yet</Text>}
 
         {list.map((a) => {
           return (
@@ -49,7 +43,7 @@ export default function Plans() {
                 <Text style={[styles.kicker, { color: brand.primary }]}>
                   {a.category} · {a.dates}
                 </Text>
-                <Text style={styles.title}>{a.title}</Text>
+                <Text style={[styles.title, { color: brand.dark }]}>{a.title}</Text>
               </View>
 
               {tab === 'Plans' ? (
@@ -122,7 +116,7 @@ function CertCard({ activity, open, onView, onCertificate }: { activity: Activit
   return (
     <Card style={{ gap: 10 }}>
       <View style={styles.certHead}>
-        <Text style={styles.name}>Certificate</Text>
+        <Text style={[styles.name, { color: brand.dark }]}>Certificate</Text>
         <StatusPill label={state} tone={stateTone[state]} />
       </View>
       {cert.requirements.map((r) => {
@@ -132,20 +126,11 @@ function CertCard({ activity, open, onView, onCertificate }: { activity: Activit
             key={r.key}
             label={r.label}
             ok={r.ok}
-            note={!done && form ? 'Available after the activity ends' : r.note}
+            note={!done && form ? undefined : r.note}
             onPress={done && form ? () => open[form](activity.id) : undefined}
           />
         );
       })}
-      <View style={[styles.note, { backgroundColor: brand.soft }]}>
-        <Text style={[styles.noteText, { color: brand.dark }]}>
-          {state === 'Released'
-            ? 'All requirements are met. Your certificate has been released.'
-            : state === 'Eligible'
-              ? 'All requirements are met. The organization will release your certificate.'
-              : 'Finish the requirements above to unlock your certificate.'}
-        </Text>
-      </View>
       {state === 'Released' && <Button label="View certificate" onPress={onCertificate} />}
       <PressableScale accessibilityRole="button" onPress={onView} style={{ alignSelf: 'flex-start' }}>
         <Text style={[styles.link, { color: brand.primary }]}>View activity</Text>
@@ -154,8 +139,8 @@ function CertCard({ activity, open, onView, onCertificate }: { activity: Activit
   );
 }
 const styles = StyleSheet.create({
-  kicker: { fontSize: 12, fontWeight: '700' },
-  title: { fontSize: 16, fontWeight: '700', color: colors.text, lineHeight: 22 },
+  kicker: { fontSize: 12, fontWeight: '600' },
+  title: { fontSize: 15, fontWeight: '600', color: colors.text, lineHeight: 21 },
   name: { fontSize: 14, fontWeight: '600', color: colors.text },
   meta: { fontSize: 12, color: colors.muted },
   certHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

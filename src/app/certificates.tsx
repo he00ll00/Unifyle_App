@@ -24,8 +24,9 @@ export default function Certificates() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         {list.length === 0 ? (
-          <Text style={styles.empty}>Join an organization to track certificate progress.</Text>
-        ) : (
+          <Text style={styles.empty}>No certificates yet</Text>
+        ) : null}
+        {list.length > 0 &&
           list.map((activity) => {
             const agency = agencies.find((item) => item.id === activity.agencyId);
             const cert = certificateStatus(demo, activity);
@@ -50,22 +51,14 @@ export default function Certificates() {
                   <>
                     {cert.requirements.map((r) => (
                       <Text key={r.key} style={styles.meta}>
-                        {r.label} · {r.note}
+                        {r.label}{r.note ? ` · ${r.note}` : ''}
                       </Text>
                     ))}
-                    <View style={styles.note}>
-                      <Text style={styles.noteText}>
-                        {cert.state === 'Eligible'
-                          ? 'Requirements are complete. The agency will release your certificate.'
-                          : 'Complete the requirements above to become eligible.'}
-                      </Text>
-                    </View>
                   </>
                 )}
               </Card>
             );
-          })
-        )}
+          })}
       </ScrollView>
 
       <CertificateView
@@ -89,4 +82,5 @@ const styles = StyleSheet.create({
   note: { backgroundColor: colors.infoSoft, borderRadius: 8, padding: 10 },
   noteText: { fontSize: 12, color: colors.info, textAlign: 'center' },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 32 },
+  intro: { fontSize: 14, lineHeight: 20, color: colors.muted },
 });

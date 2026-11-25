@@ -170,7 +170,7 @@ export default function OrgLayout() {
           headerShadowVisible: false,
           headerTitleAlign: 'center',
           headerStyle: { backgroundColor: '#fff' },
-          headerTitleStyle: { color: colors.text, fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+          headerTitleStyle: { color: brand.dark, fontSize: 16, fontFamily: 'Inter_600SemiBold' },
         }}
       >
         {/* Dashboard tab is a stack: dashboard, activity workspace and profile. */}

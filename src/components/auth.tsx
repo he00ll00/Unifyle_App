@@ -21,20 +21,24 @@ type FieldProps = Omit<TextInputProps, 'style'> & {
   optional?: boolean;
   error?: string;
   hint?: string;
+  /** Uses an inline placeholder while keeping the accessible field label. */
+  compact?: boolean;
   /** Password field: adds the Show / Hide button inside the field. */
   secure?: boolean;
 };
 
-export function AuthField({ label, optional, error, hint, secure, ...input }: FieldProps) {
+export function AuthField({ label, optional, error, hint, secure, compact, ...input }: FieldProps) {
   const [focused, setFocused] = useState(false);
   const [shown, setShown] = useState(false);
   return (
     <View style={s.field}>
-      <Text style={s.label}>
-        {label}
-        {optional ? <Text style={s.optional}>  (optional)</Text> : null}
-      </Text>
-      <View style={[s.box, focused && s.boxFocus, !!error && s.boxError]}>
+      {!compact && (
+        <Text style={s.label}>
+          {label}
+          {optional ? <Text style={s.optional}>  (optional)</Text> : null}
+        </Text>
+      )}
+      <View style={[s.box, compact && s.compactBox, focused && s.boxFocus, !!error && s.boxError]}>
         <TextInput
           {...input}
           accessibilityLabel={label}
@@ -48,11 +52,11 @@ export function AuthField({ label, optional, error, hint, secure, ...input }: Fi
             setFocused(false);
             input.onBlur?.(e);
           }}
-          style={s.input}
+          style={[s.input, compact && s.compactInput]}
         />
         {secure ? (
           <Pressable accessibilityRole="button" accessibilityLabel={shown ? 'Hide password' : 'Show password'} onPress={() => setShown((v) => !v)} hitSlop={8} style={s.toggle}>
-            <Text style={s.toggleText}>{shown ? 'Hide' : 'Show'}</Text>
+            <Text style={[s.toggleText, compact && s.compactToggle]}>{shown ? 'Hide' : 'Show'}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -245,6 +249,9 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 14,
   },
+  compactBox: { height: 52, backgroundColor: '#F0F0F0', borderColor: 'transparent', paddingHorizontal: 15 },
+  compactInput: { height: 48, fontSize: 15 },
+  compactToggle: { fontSize: 13 },
   boxFocus: { borderColor: colors.primary },
   boxError: { borderColor: colors.danger },
   input: { flex: 1, height: 56, paddingVertical: 0, paddingHorizontal: 0, fontSize: 17, color: colors.text, outlineWidth: 0 },

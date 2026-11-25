@@ -3,18 +3,30 @@ import * as Network from 'expo-network';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { agencies as defaultAgencies, Agency, invitations } from '@/data/mock';
 
-/** 
-eedsCategory: the code has no preset participant category, so ask the participant to pick one. */
+export type ChatMessage = {
+  agencyId: string;
+  /** The original activity for messages saved before activity chats were consolidated. */
+  activityId?: string;
+  text: string;
+  sentAt: number;
+};
+
+export const MESSAGE_LIMIT = 1000;
+
+/** Joining with a code. `needsCategory`: the code has no preset participant category, so ask the participant to pick one. */
 type JoinResult = { ok: true; agency: Agency } | { ok: false; error: string; needsCategory?: boolean };
 
 type State = {
   agencies: Agency[];
   /** Organizations the participant left, so the sample ones don't come back on the next start. */
   hiddenAgencyIds: string[];
+  /** The participant's profile photo (a picture from the phone), if they set one. */
+  avatarUri?: string;
+  messages: ChatMessage[];
 };
 
 const KEY = 'unifyle.state.v5';
-const initial: State = { agencies: defaultAgencies, hiddenAgencyIds: [] };
+const initial: State = { agencies: defaultAgencies, hiddenAgencyIds: [], messages: [] };
 
 /** Saved data may come from an older app version: refresh known agencies and drop malformed ones. */
 function normalize(value: unknown): State {
@@ -35,7 +47,14 @@ function normalize(value: unknown): State {
     ...savedAgencies.filter((a) => !hiddenAgencyIds.includes(a.id)),
     ...defaultAgencies.filter((d) => !hiddenAgencyIds.includes(d.id) && !savedAgencies.some((a) => a.id === d.id)),
   ];
-  return { agencies, hiddenAgencyIds };
+  const messages = Array.isArray(saved.messages)
+    ? saved.messages.filter((m) =>
+        m && typeof m.agencyId === 'string' &&
+        (m.activityId === undefined || typeof m.activityId === 'string') &&
+        typeof m.text === 'string' && Number.isFinite(m.sentAt),
+      )
+    : [];
+  return { agencies, hiddenAgencyIds, messages, avatarUri: typeof saved.avatarUri === 'string' ? saved.avatarUri : undefined };
 }
 
 type Store = State & {
@@ -44,6 +63,9 @@ type Store = State & {
   joinAgency: (code: string, category?: string) => JoinResult;
   leaveAgency: (agencyId: string) => void;
   moveAgency: (agencyId: string, direction: -1 | 1) => void;
+  /** Sets the profile photo, or removes it when called with nothing. */
+  setAvatar: (uri?: string) => void;
+  saveMessage: (agencyId: string, text: string) => boolean;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -117,6 +139,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         memberSince: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       };
       commit({
+        ...current,
         agencies: [...current.agencies, agency],
         hiddenAgencyIds: current.hiddenAgencyIds.filter((id) => id !== agency.id),
       });
@@ -129,6 +152,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     (agencyId) => {
       const current = ref.current;
       commit({
+        ...current,
         agencies: current.agencies.filter((a) => a.id !== agencyId),
         hiddenAgencyIds: current.hiddenAgencyIds.includes(agencyId) ? current.hiddenAgencyIds : [...current.hiddenAgencyIds, agencyId],
       });
@@ -149,9 +173,24 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
     [commit],
   );
 
+  const setAvatar: Store['setAvatar'] = useCallback(
+    (uri) => {
+      commit({ ...ref.current, avatarUri: uri });
+    },
+    [commit],
+  );
+
+  const saveMessage: Store['saveMessage'] = useCallback((agencyId, text) => {
+    const current = ref.current;
+    const body = text.trim();
+    if (!online || !body || body.length > MESSAGE_LIMIT || !current.agencies.some((a) => a.id === agencyId)) return false;
+    commit({ ...current, messages: [...current.messages, { agencyId, text: body, sentAt: Date.now() }] });
+    return true;
+  }, [commit, online]);
+
   const value = useMemo<Store>(
-    () => ({ ...state, hydrated: loaded, online, joinAgency, leaveAgency, moveAgency }),
-    [state, loaded, online, joinAgency, leaveAgency, moveAgency],
+    () => ({ ...state, hydrated: loaded, online, joinAgency, leaveAgency, moveAgency, setAvatar, saveMessage }),
+    [state, loaded, online, joinAgency, leaveAgency, moveAgency, setAvatar, saveMessage],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

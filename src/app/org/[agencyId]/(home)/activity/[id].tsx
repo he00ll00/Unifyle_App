@@ -14,7 +14,7 @@ import { useSubmissionForms } from '@/components/forms';
 import { useToast } from '@/components/sheets';
 import { Button, PressableScale } from '@/components/ui';
 import { activities, isRegistered } from '@/data/mock';
-import { certificateRules, overviewOf } from '@/data/sample';
+import { overviewOf } from '@/data/sample';
 import { certificateStatus, demoActions, useDemo } from '@/store/demo';
 import { colors, shadowTop } from '@/theme';
 
@@ -22,7 +22,7 @@ const TABS: TabName[] = ['Overview', 'Sessions', 'Materials', 'Attendance', 'Sub
 
 /** Activity workspace: front end only, with example info from the design. */
 export default function ActivityWorkspace() {
-  const { agencyId, id } = useLocalSearchParams<{ agencyId: string; id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const activity = activities.find((a) => a.id === id);
   const brand = useBrand();
   const demo = useDemo();
@@ -30,7 +30,6 @@ export default function ActivityWorkspace() {
   const [focus, setFocus] = useState<SessionFocus | null>(null);
   const [materialsFor, setMaterialsFor] = useState('');
   const [options, setOptions] = useState(false);
-  const [details, setDetails] = useState(false);
   const [saved, setSaved] = useState(false);
   const [certificate, setCertificate] = useState(false);
   const { notify, toast } = useToast();
@@ -68,7 +67,7 @@ export default function ActivityWorkspace() {
   const primary: { label: string; run: () => void } = !registered
     ? { label: 'Register with activity code', run: () => setRegisterOpen(true) }
     : activity.status === 'Ongoing'
-      ? { label: 'Scan QR to check in', run: () => router.navigate({ pathname: '/org/[agencyId]/checkin', params: { agencyId } }) }
+      ? { label: 'Scan QR to check in', run: () => router.push('/scanner') }
       : activity.status === 'Completed'
         ? cert.state === 'Released'
           ? { label: 'View my certificate', run: () => setCertificate(true) }
@@ -77,7 +76,7 @@ export default function ActivityWorkspace() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView stickyHeaderIndices={[1]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: tab === 'Attendance' ? 130 : 28 }}>
+      <ScrollView stickyHeaderIndices={[1]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         {/* 1. Where you stand with this activity, and the one thing to do next */}
         <View>
           <HeroArt height={176} variant="activity">
@@ -113,7 +112,7 @@ export default function ActivityWorkspace() {
           <View style={styles.sheet}>
             <View style={{ gap: 4 }}>
               <Text style={styles.sub}>{activity.category}</Text>
-              <Text style={styles.title} accessibilityRole="header">
+              <Text style={[styles.title, { color: brand.dark }]} accessibilityRole="header">
                 {activity.title}
               </Text>
             </View>
@@ -128,7 +127,7 @@ export default function ActivityWorkspace() {
                 const I = Icon as typeof CalendarDays;
                 return (
                   <View key={i} style={styles.factRow}>
-                    <I size={20} color={brand.primary} />
+                    <I size={16} color={brand.primary} />
                     <Text style={styles.factText}>{text as string}</Text>
                   </View>
                 );
@@ -153,10 +152,10 @@ export default function ActivityWorkspace() {
 
         {/* 3. The chosen tab */}
         <View style={styles.content}>
-          {tab === 'Overview' && <OverviewTab activity={activity} goTo={goTo} open={forms.open} />}
+          {tab === 'Overview' && <OverviewTab activity={activity} goTo={goTo} />}
           {tab === 'Sessions' && <SessionsTab focus={focus} onFocus={setFocus} goTo={goTo} notify={notify} />}
           {tab === 'Materials' && <MaterialsTab notify={notify} session={materialsFor} />}
-          {tab === 'Attendance' && <AttendanceTab title={activity.title} />}
+          {tab === 'Attendance' && <AttendanceTab />}
           {tab === 'Submissions' && <SubmissionsTab activity={activity} open={forms.open} onCertificate={() => setCertificate(true)} />}
           {tab === 'Updates' && <UpdatesTab activity={activity} />}
         </View>
@@ -164,37 +163,12 @@ export default function ActivityWorkspace() {
 
       <BottomSheet visible={registerOpen} onClose={closeRegister} title="Register" subtitle={activity.title}>
         <View style={{ gap: 16 }}>
-          <Text style={styles.sheetText}>Type the activity code your agency gave you. It confirms that you are invited to this activity.</Text>
           <AuthField label="Activity code" value={code} onChangeText={(v) => { setCode(v); setCodeError(undefined); }} error={codeError} placeholder="e.g. PRRI-2025-A" autoCapitalize="characters" autoCorrect={false} returnKeyType="done" onSubmitEditing={register} />
           <Button label="Register" size="lg" onPress={register} />
         </View>
       </BottomSheet>
 
-      {tab === 'Attendance' && (
-        <View style={styles.sticky}>
-          <Button label="Scan QR Code" onPress={() => router.navigate({ pathname: '/org/[agencyId]/checkin', params: { agencyId } })} />
-          <Text style={styles.stickyText}>Scan the QR code displayed at the training hall entrance.</Text>
-        </View>
-      )}
-
       <BottomSheet visible={options} onClose={() => setOptions(false)} title="Activity options">
-        <PressableScale
-          scaleTo={0.98}
-          style={styles.opt}
-          onPress={() => {
-            setOptions(false);
-            setDetails(true);
-          }}
-        >
-          <View style={[styles.optIcon, { backgroundColor: brand.soft }]}>
-            <Ionicons name="information-circle-outline" size={20} color={brand.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.optTitle}>Full activity details</Text>
-            <Text style={styles.meta}>Registration info and capacity</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-        </PressableScale>
         <PressableScale
           scaleTo={0.98}
           style={styles.opt}
@@ -208,28 +182,9 @@ export default function ActivityWorkspace() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.optTitle}>Copy activity link</Text>
-            <Text style={styles.meta}>Demo action · nothing is copied</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.muted} />
         </PressableScale>
-      </BottomSheet>
-
-      <BottomSheet visible={details} onClose={() => setDetails(false)} title="Full activity details" subtitle={activity.title}>
-        {[
-          ['Registration', isRegistered(activity, demo.joined) ? 'Registered' : 'Not registered'],
-          ['Capacity', activity.capacity ? `${activity.capacity.taken} of ${activity.capacity.max} slots taken` : '42 of 50 slots taken'],
-          ['Activity type', activity.category],
-          ['Status', activity.status],
-          ['Min. attendance', `${certificateRules.minAttendance}% of check points`],
-          ['Required for certificate', ['Feedback', 'Reentry plan', 'Output'].filter((_, i) => [certificateRules.requireFeedback, certificateRules.requireReentry, certificateRules.requireOutput][i]).join(', ')],
-          ['Certificate release', certificateRules.release],
-        ].map(([k, v]) => (
-          <View key={k} style={styles.detailRow}>
-            <Text style={styles.meta}>{k}</Text>
-            <Text style={styles.detailValue}>{v}</Text>
-          </View>
-        ))}
-        <Button label="Close" variant="soft" onPress={() => setDetails(false)} />
       </BottomSheet>
 
       <CertificateView
@@ -260,10 +215,10 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 13, fontWeight: '600', color: '#fff' },
   sheet: { backgroundColor: '#fff', marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, gap: 18 },
   badges: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 },
-  sub: { fontSize: 15, fontWeight: '500', color: colors.muted },
-  facts: { gap: 14 },
-  factRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  factText: { flex: 1, fontSize: 16, lineHeight: 22, color: colors.text },
+  sub: { fontSize: 13, fontWeight: '500', color: colors.muted },
+  facts: { gap: 10 },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  factText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.text },
   tabsBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: colors.border },
   tabs: { paddingHorizontal: 12, gap: 6 },
   tab: { paddingHorizontal: 10, paddingTop: 14, minHeight: 50, alignItems: 'center' },

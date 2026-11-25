@@ -41,7 +41,7 @@ export default function MyActivities() {
           <PressableScale accessibilityRole="button" accessibilityLabel="Back to workspaces" onPress={() => router.replace('/workspaces')} style={s.back} hitSlop={8}>
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </PressableScale>
-          <Text style={s.topTitle} accessibilityRole="header">
+          <Text style={[s.topTitle, { color: brand.dark }]} accessibilityRole="header">
             My activities
           </Text>
           <View style={s.back} />
@@ -50,7 +50,7 @@ export default function MyActivities() {
 
       {next ? (
         <PressableScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`Next: ${next.title}`} onPress={() => open(next)} style={[s.next, { backgroundColor: brand.primary }]}>
-          <Text style={s.nextKicker}>{next.status === 'Ongoing' ? 'HAPPENING NOW' : 'UP NEXT'}</Text>
+          <Text style={s.nextKicker}>{next.status === 'Ongoing' ? 'Happening now' : 'Up next'}</Text>
           <Text style={s.nextTitle}>{next.title}</Text>
           <View style={s.nextLine}>
             <Ionicons name="calendar-outline" size={16} color="#fff" />
@@ -111,7 +111,7 @@ const s = StyleSheet.create({
   back: { width: 32, height: 40, justifyContent: 'center' },
   topTitle: { fontSize: 18, fontWeight: '600', color: colors.text },
   next: { marginHorizontal: 16, marginTop: 16, borderRadius: 20, padding: 18, gap: 8 },
-  nextKicker: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: 'rgba(255,255,255,0.85)' },
+  nextKicker: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
   nextTitle: { fontSize: 20, fontWeight: '700', lineHeight: 26, color: '#fff' },
   nextLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   nextMeta: { flex: 1, fontSize: 14, color: '#fff' },

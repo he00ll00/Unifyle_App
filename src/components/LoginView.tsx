@@ -1,32 +1,37 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AccessibilityInfo, Image, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthField } from '@/components/auth';
-import { BottomSheet, Logo, useLogoFace } from '@/components/bits';
+import { BottomSheet } from '@/components/bits';
 import { KeyboardAwareScrollView } from '@/components/keyboard';
+import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Text';
-import { Button } from '@/components/ui';
-import { colors } from '@/theme';
+import { Button, PressableScale } from '@/components/ui';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const LOGO = 96;          // logo width on the sign-in screen
-const BIG = 1.55;         // how much bigger it starts, in the middle of the screen
+const SIGN_IN_BACKGROUND = require('../../assets/unifyle-sign-in-bg.png');
+const SIGN_IN_BUTTON = require('../../assets/unifyle-sign-in-button.png');
+const LOADING_BACKGROUND = require('../../assets/unifyle-loading-bg.png');
 
-/**
- * Sign-in. Accounts sign in with an email, like the web console. Front end only for now, so a valid form
- * continues to the workspaces. Creating an account is its own step-by-step screen.
- *
- * With `intro`, this is also the launch screen: the logo appears alone in the middle of a soft gradient,
- * smiles and winks, then glides up into its place at the top while the gradient clears and the form
- * fades in. It is one screen, so the logo really is the same element the whole time. Anyone with
- * "Reduce motion" turned on just gets a gentle fade. Tap anywhere to skip it.
- */
 export default function LoginView({ intro = false }: { intro?: boolean }) {
-  const { height: windowH } = useWindowDimensions();
-  const face = useLogoFace();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [playing, setPlaying] = useState(intro);
 
-  /* ---------- form ---------- */
+  useEffect(() => {
+    if (!playing) return;
+    const timer = setTimeout(() => setPlaying(false), 1500);
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
+      if (active && reduce) setPlaying(false);
+    }).catch(() => {});
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [playing]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -57,201 +62,98 @@ export default function LoginView({ intro = false }: { intro?: boolean }) {
     setResetError(undefined);
   };
 
-  /* ---------- intro animation ---------- */
-  const [playing, setPlaying] = useState(intro);
-  const logoWrap = useRef<React.ComponentRef<typeof View>>(null);
-  const [dy, setDy] = useState<number | null>(null);   // how far above its place the logo starts (negative = below)
+  if (playing) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="UniFyle loading. Skip intro"
+        onPress={() => setPlaying(false)}
+        style={s.loading}
+      >
+        <Image source={LOADING_BACKGROUND} resizeMode="stretch" style={s.artwork} accessible={false} />
+        <View style={s.lockup}>
+          <Logo size={116} />
+          <Text style={s.loadingTitle}>UniFyle</Text>
+        </View>
+      </Pressable>
+    );
+  }
 
-  // Logo
-  const [logoOpacity] = useState(() => new Animated.Value(intro ? 0 : 1));
-  const [logoScale] = useState(() => new Animated.Value(intro ? BIG * 0.8 : 1));
-  const [logoY] = useState(() => new Animated.Value(0));
-  const [word] = useState(() => new Animated.Value(0));
-  const [gradient] = useState(() => new Animated.Value(intro ? 1 : 0));
-  // The three groups that appear after the logo has landed
-  const [head] = useState(() => new Animated.Value(intro ? 0 : 1));
-  const [form] = useState(() => new Animated.Value(intro ? 0 : 1));
-  const [foot] = useState(() => new Animated.Value(intro ? 0 : 1));
-  const running = useRef<Animated.CompositeAnimation | null>(null);
-
-  const settle = useCallback(() => {
-    running.current?.stop();
-    [logoOpacity, head, form, foot].forEach((v) => v.setValue(1));
-    [logoScale].forEach((v) => v.setValue(1));
-    [logoY, word, gradient].forEach((v) => v.setValue(0));
-    setPlaying(false);
-  }, [logoOpacity, logoScale, logoY, word, gradient, head, form, foot]);
-
-  // Measure where the logo ends up, so the start position can be the middle of the screen
-  const measure = useCallback(() => {
-    logoWrap.current?.measureInWindow((_x, y, _w, h) => {
-      if (h > 0) setDy(windowH / 2 - 24 - (y + h / 2));
-    });
-  }, [windowH]);
-
-  useEffect(() => {
-    if (!intro || !playing || dy === null) return undefined;
-    let cancelled = false;
-    let timers: ReturnType<typeof setTimeout>[] = [];
-
-    (async () => {
-      const reduce = await AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
-      if (cancelled) return;
-      const fade = (v: Animated.Value, to: number, duration: number, delay = 0) =>
-        Animated.timing(v, { toValue: to, duration, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true });
-
-      if (reduce) {
-        logoY.setValue(0);
-        logoScale.setValue(1);
-        gradient.setValue(0);
-        running.current = Animated.parallel([fade(logoOpacity, 1, 250), fade(head, 1, 250), fade(form, 1, 250), fade(foot, 1, 250)]);
-        running.current.start(() => !cancelled && setPlaying(false));
-        return;
-      }
-
-      logoY.setValue(dy);
-      const rise = (v: Animated.Value) => Animated.parallel([fade(v, 1, 380)]);
-      running.current = Animated.sequence([
-        // 1. The logo appears in the middle, growing a little, with its name under it
-        Animated.parallel([
-          fade(logoOpacity, 1, 380),
-          Animated.spring(logoScale, { toValue: BIG, friction: 6, tension: 70, useNativeDriver: true }),
-          fade(word, 1, 420, 200),
-        ]),
-        Animated.delay(1000),   // the wink happens during this pause
-        // 2. It glides up into place; the gradient clears; the form fades in
-        Animated.parallel([
-          fade(word, 0, 220),
-          Animated.timing(logoY, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(logoScale, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(gradient, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-          Animated.stagger(110, [Animated.sequence([Animated.delay(420), rise(head)]), Animated.sequence([Animated.delay(420), rise(form)]), Animated.sequence([Animated.delay(420), rise(foot)])]),
-        ]),
-      ]);
-      running.current.start(({ finished }) => finished && !cancelled && setPlaying(false));
-      timers = [setTimeout(() => face.wink(), 750)];
-    })();
-
-    return () => {
-      cancelled = true;
-      timers.forEach(clearTimeout);
-      running.current?.stop();
-    };
-  }, [intro, playing, dy, face, logoOpacity, logoScale, logoY, word, gradient, head, form, foot]);
-
-  // If measuring never answers (rare), start anyway from where the logo is
-  useEffect(() => {
-    if (!intro) return undefined;
-    const t = setTimeout(() => setDy((d) => d ?? 0), 500);
-    return () => clearTimeout(t);
-  }, [intro]);
-
-  // After the intro, an occasional friendly blink while the screen is open
-  useEffect(() => {
-    if (playing) return undefined;
-    let t: ReturnType<typeof setTimeout>;
-    const next = () => {
-      t = setTimeout(() => {
-        face.blink();
-        next();
-      }, 4500 + Math.random() * 3500);
-    };
-    next();
-    return () => clearTimeout(t);
-  }, [playing, face]);
-
-  const rise = (v: Animated.Value) => ({ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] });
-
+  const paddingTop = Math.max(24 + insets.top, Math.min(88, height * 0.117));
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {intro && playing ? (
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: gradient }]}>
-          <LinearGradient colors={['#FFFFFF', '#DCE7FB']} style={StyleSheet.absoluteFill} />
-        </Animated.View>
-      ) : null}
+    <View style={s.root}>
+      <Image source={SIGN_IN_BACKGROUND} resizeMode="stretch" style={s.artwork} accessible={false} />
+      <KeyboardAwareScrollView
+        bottomOffset={32}
+        contentContainerStyle={[s.screen, { paddingTop, paddingBottom: insets.bottom + 32 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={s.content}>
+          <View style={s.head}>
+            <Logo />
+            <View style={s.titles}>
+              <Text style={s.title} accessibilityRole="header">Welcome Back</Text>
+              <Text style={s.sub}>Sign in to continue</Text>
+            </View>
+          </View>
 
-      <KeyboardAwareScrollView bottomOffset={32} contentContainerStyle={s.screen} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} scrollEnabled={!playing}>
-        {/* 1. Who we are and what this screen is */}
-        <View style={s.head}>
-          <Animated.View style={{ opacity: logoOpacity, transform: [{ translateY: logoY }, { scale: logoScale }] }}>
-            <View ref={logoWrap} onLayout={measure}>
-              <Pressable accessibilityRole="image" accessibilityLabel="UniFyle logo" onPress={face.wink} disabled={playing}>
-                <Logo size={LOGO} face={face} />
+          <View style={s.form}>
+            <AuthField
+              compact
+              label="Email address"
+              value={email}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (errors.email) setErrors((e) => ({ ...e, email: undefined }));
+              }}
+              error={errors.email}
+              placeholder="Email address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              returnKeyType="next"
+            />
+            <View style={{ gap: 4 }}>
+              <AuthField
+                compact
+                label="Password"
+                secure
+                value={password}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  if (errors.password) setErrors((e) => ({ ...e, password: undefined }));
+                }}
+                error={errors.password}
+                placeholder="Password"
+                autoCapitalize="none"
+                autoComplete="current-password"
+                textContentType="password"
+                returnKeyType="done"
+                onSubmitEditing={signIn}
+              />
+              <Pressable accessibilityRole="button" onPress={() => setForgot(true)} style={s.forgot}>
+                <Text style={s.link}>Forgot password?</Text>
               </Pressable>
             </View>
-          </Animated.View>
-          <Animated.View style={[s.titles, rise(head)]}>
-            <Text style={s.title} accessibilityRole="header">
-              Welcome back
-            </Text>
-            <Text style={s.sub}>Sign in to continue</Text>
-          </Animated.View>
-        </View>
+            <PressableScale accessibilityRole="button" onPress={signIn} style={s.submit}>
+              <Image source={SIGN_IN_BUTTON} resizeMode="stretch" style={s.artwork} accessible={false} />
+              <Text style={s.submitText}>Sign in</Text>
+            </PressableScale>
+          </View>
 
-        {/* 2. The one thing to do here */}
-        <Animated.View style={[s.form, rise(form)]}>
-          <AuthField
-            label="Email address"
-            value={email}
-            onChangeText={(v) => {
-              setEmail(v);
-              if (errors.email) setErrors((e) => ({ ...e, email: undefined }));
-            }}
-            error={errors.email}
-            placeholder="name@email.com"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="email"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            returnKeyType="next"
-          />
-          <View style={{ gap: 4 }}>
-            <AuthField
-              label="Password"
-              secure
-              value={password}
-              onChangeText={(v) => {
-                setPassword(v);
-                if (errors.password) setErrors((e) => ({ ...e, password: undefined }));
-              }}
-              error={errors.password}
-              placeholder="Your password"
-              autoCapitalize="none"
-              autoComplete="current-password"
-              textContentType="password"
-              returnKeyType="done"
-              onSubmitEditing={signIn}
-            />
-            <Pressable accessibilityRole="button" onPress={() => setForgot(true)} style={s.forgot}>
-              <Text style={s.link}>Forgot password?</Text>
+          <View style={s.newHere}>
+            <Text style={s.prompt}>New to UniFyle?</Text>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/signup')} style={s.accountLink}>
+              <Text style={s.link}>Create an account</Text>
             </Pressable>
           </View>
-          <Button label="Sign in" size="lg" onPress={signIn} />
-        </Animated.View>
-
-        {/* 3. The way in for new people, clearly second */}
-        <Animated.View style={[s.newHere, rise(foot)]}>
-          <View style={s.divider}>
-            <View style={s.line} />
-            <Text style={s.dividerText}>New to UniFyle?</Text>
-            <View style={s.line} />
-          </View>
-          <Button label="Create an account" variant="soft" size="lg" onPress={() => router.push('/signup')} />
-        </Animated.View>
+        </View>
       </KeyboardAwareScrollView>
 
-      {/* The name under the logo, only while it sits in the middle */}
-      {intro && playing ? (
-        <Animated.View pointerEvents="none" style={[s.wordWrap, { top: windowH / 2 - 24 + LOGO * BIG * 0.5 + 18, opacity: word }]}>
-          <Text style={s.word}>UNIFYLE</Text>
-        </Animated.View>
-      ) : null}
-
-      {/* Tap anywhere to skip the intro */}
-      {intro && playing ? <Pressable accessibilityRole="button" accessibilityLabel="Skip intro" onPress={settle} style={StyleSheet.absoluteFill} /> : null}
-
-      <BottomSheet visible={forgot} onClose={closeForgot} title="Reset your password" subtitle="We’ll send a reset link to your email.">
+      <BottomSheet visible={forgot} onClose={closeForgot} title="Reset your password">
         {sent ? (
           <Text style={s.sub}>Check your inbox. A reset link was sent (sample).</Text>
         ) : (
@@ -281,18 +183,23 @@ export default function LoginView({ intro = false }: { intro?: boolean }) {
 }
 
 const s = StyleSheet.create({
-  screen: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32, gap: 32 },
-  head: { alignItems: 'center', gap: 6 },
-  titles: { alignItems: 'center', gap: 6, marginTop: 16 },
-  title: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  sub: { fontSize: 17, color: colors.muted },
-  form: { gap: 18 },
+  root: { flex: 1, backgroundColor: '#F7F7FA' },
+  artwork: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EDF3FE' },
+  lockup: { alignItems: 'center', gap: 8, transform: [{ translateY: -18 }] },
+  loadingTitle: { color: '#004EEA', fontSize: 23, fontWeight: '700', lineHeight: 28 },
+  screen: { flexGrow: 1, paddingHorizontal: 36 },
+  content: { width: '100%', maxWidth: 380, alignSelf: 'center' },
+  head: { alignItems: 'center', gap: 24 },
+  titles: { alignItems: 'center', gap: 5 },
+  title: { fontSize: 23, fontWeight: '700', color: '#2965DD', textAlign: 'center' },
+  sub: { fontSize: 16, color: '#2965DD', textAlign: 'center' },
+  form: { marginTop: 37, gap: 16 },
   forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingLeft: 12 },
-  link: { fontSize: 15, fontWeight: '600', color: colors.primary },
-  newHere: { gap: 16 },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  line: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { fontSize: 14, color: colors.muted },
-  wordWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  word: { fontSize: 20, fontWeight: '700', letterSpacing: 3, color: colors.primary },
+  link: { fontSize: 14, fontWeight: '600', color: '#235BCD' },
+  submit: { minHeight: 52, borderRadius: 14, overflow: 'hidden', backgroundColor: '#1764DD', alignItems: 'center', justifyContent: 'center' },
+  submitText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  newHere: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 8 },
+  prompt: { fontSize: 14, color: '#525E70' },
+  accountLink: { justifyContent: 'center', minHeight: 44 },
 });

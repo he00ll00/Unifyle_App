@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useBrand } from '@/components/Brand';
 import { DateBlock } from '@/components/bits';
 import { Text } from '@/components/Text';
@@ -35,7 +35,7 @@ export function ActivityCard({
   const date = dateParts(activity);
   const st = STATUS[activity.status];
   return (
-    <PressableScale scaleTo={0.985} accessibilityRole="button" accessibilityLabel={`${activity.title}. ${activity.status}. ${footerText}`} onPress={onPress} style={s.card}>
+    <PressableScale scaleTo={0.985} accessibilityRole={Platform.OS === 'web' ? undefined : 'button'} accessibilityLabel={`${activity.title}. ${activity.status}. ${footerText}`} onPress={onPress} style={s.card}>
       <View style={s.top}>
         <DateBlock month={date.month} day={date.day} />
         <View style={{ flex: 1, gap: 4 }}>
@@ -44,7 +44,7 @@ export function ActivityCard({
             <Text style={s.status}>{st.label}</Text>
             <Text style={s.type}>· {activity.category}</Text>
           </View>
-          <Text style={s.title}>{activity.title}</Text>
+          <Text style={[s.title, { color: brand.dark }]}>{activity.title}</Text>
         </View>
       </View>
 

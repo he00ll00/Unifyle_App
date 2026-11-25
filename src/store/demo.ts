@@ -73,7 +73,7 @@ export const demoActions = {
   },
 };
 
-export type Requirement = { key: string; label: string; ok: boolean; note: string };
+export type Requirement = { key: string; label: string; ok: boolean; note?: string };
 export type CertificateState = 'Not eligible' | 'Eligible' | 'Released';
 
 /**
@@ -90,13 +90,13 @@ export function certificateStatus(demo: DemoState, activity: Activity) {
     { key: 'attendance', label: `Attendance of at least ${certificateRules.minAttendance}%`, ok: pct >= certificateRules.minAttendance, note: `${pct}% so far` },
   ];
   if (certificateRules.requireFeedback) {
-    requirements.push({ key: 'feedback', label: 'Activity feedback', ok: !!demo.feedback[activity.id], note: demo.feedback[activity.id] ? 'Submitted' : 'Not submitted' });
+    requirements.push({ key: 'feedback', label: 'Activity feedback', ok: !!demo.feedback[activity.id], note: demo.feedback[activity.id] ? 'Submitted' : undefined });
   }
   if (certificateRules.requireReentry) {
-    requirements.push({ key: 'reentry', label: 'Reentry plan', ok: plan?.status === 'submitted', note: plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft saved') : 'Not submitted' });
+    requirements.push({ key: 'reentry', label: 'Reentry plan', ok: plan?.status === 'submitted', note: plan ? (plan.status === 'submitted' ? 'Submitted' : 'Draft saved') : undefined });
   }
   if (certificateRules.requireOutput) {
-    requirements.push({ key: 'output', label: 'Output submission', ok: output > 0, note: output > 0 ? `${output} submitted` : 'Not submitted' });
+    requirements.push({ key: 'output', label: 'Output submission', ok: output > 0, note: output > 0 ? `${output} submitted` : undefined });
   }
 
   const eligible = completed && requirements.every((r) => r.ok);

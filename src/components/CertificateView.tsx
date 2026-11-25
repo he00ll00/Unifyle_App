@@ -55,7 +55,6 @@ export function CertificateView({ activity, onClose, onDownload }: { activity: A
             </View>
 
             <Button label="Download certificate" onPress={onDownload} />
-            <Text style={styles.note}>Sample certificate: nothing is downloaded yet.</Text>
           </ScrollView>
         )}
       </View>

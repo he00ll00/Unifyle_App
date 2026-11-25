@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAvoiding } from '@/components/keyboard';
 import { Text, TextInput } from '@/components/Text';
@@ -29,6 +29,14 @@ export function JoinOrgModal({ visible, onClose }: { visible: boolean; onClose: 
       setCategory('');
     }, 200);
   };
+
+  // Once the organization is added its card is already in the list behind, so the message closes by itself.
+  useEffect(() => {
+    if (!added) return;
+    const t = setTimeout(close, 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [added]);
 
   const submit = () => {
     const res = joinAgency(code, category || undefined);
@@ -63,7 +71,6 @@ export function JoinOrgModal({ visible, onClose }: { visible: boolean; onClose: 
           ) : (
             <>
               <Text style={styles.title}>Add organization</Text>
-              <Text style={styles.body}>Ask for the organization code (like PRRI-AB12), then enter it here</Text>
               <TextInput
                 value={code}
                 onChangeText={(t) => {

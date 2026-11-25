@@ -53,8 +53,7 @@ export default function Notifications() {
             <View style={s.emptyIcon}>
               <Ionicons name="notifications-outline" size={30} color={colors.primary} />
             </View>
-            <Text style={s.emptyTitle}>You’re all caught up</Text>
-            <Text style={s.emptyText}>New updates from your agencies will show up here.</Text>
+            <Text style={s.emptyTitle}>No updates</Text>
           </View>
         )}
 

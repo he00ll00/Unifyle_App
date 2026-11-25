@@ -13,7 +13,6 @@ import {
   allSessions,
   attendanceDays,
   attendanceDone,
-  attendanceHistory,
   attendanceTotal,
   certificateRules,
   days,
@@ -39,14 +38,14 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 const Section = ({ title, icon, children }: { title: string; icon?: IconName; children: React.ReactNode }) => {
   const brand = useBrand();
   return (
-    <Card style={{ gap: 10 }}>
+    <Card style={{ gap: 12 }}>
       <View style={s.sectionHead}>
         {icon ? (
           <View style={[s.sectionIcon, { backgroundColor: brand.soft }]}>
             <Ionicons name={icon} size={18} color={brand.primary} />
           </View>
         ) : null}
-        <Text style={s.h} accessibilityRole="header">
+        <Text style={[s.h, { color: brand.dark }]} accessibilityRole="header">
           {title}
         </Text>
       </View>
@@ -71,7 +70,7 @@ const Bullets = ({ items }: { items: string[] }) => {
 
 /* ------------------------------ Overview ------------------------------ */
 
-export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo: GoTo; open: FormOpener }) {
+export function OverviewTab({ activity, goTo }: { activity: Activity; goTo: GoTo }) {
   const brand = useBrand();
   const p = progressOf(activity);
   const overview = overviewOf(activity);
@@ -101,7 +100,7 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         {/* A solid brand-colour card with white text, so it stands apart from the white cards below. */}
         <Card style={{ gap: 4, backgroundColor: brand.primary }}>
           <View style={s.between}>
-            <Text style={[s.kicker, { color: 'rgba(255,255,255,0.85)' }]}>{nextSession.status === 'In progress' ? 'HAPPENING NOW' : 'UP NEXT'}</Text>
+            <Text style={[s.kicker, { color: 'rgba(255,255,255,0.85)' }]}>{nextSession.status === 'In progress' ? 'Happening now' : 'Up next'}</Text>
             <Ionicons name="chevron-forward" size={16} color="#fff" />
           </View>
           <Text style={[s.h, { color: '#fff' }]}>{nextSession.title}</Text>
@@ -116,7 +115,7 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
       {/* One card: the progress bar and what has been completed so far. */}
       <Card style={{ gap: 8 }}>
         <View style={s.between}>
-          <Text style={s.h}>Activity progress</Text>
+          <Text style={[s.h, { color: brand.dark }]}>Activity progress</Text>
           <Text style={[s.h, { color: brand.primary }]}>
             {p.day} {p.pct}%
           </Text>
@@ -125,19 +124,16 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
           <View style={[s.fill, { width: `${p.pct}%`, backgroundColor: brand.primary }]} />
         </View>
         <Text style={s.meta}>{p.note}</Text>
-        <View style={s.divider} />
-        <ChecklistRows activity={activity} open={open} locked={activity.status !== 'Completed'} />
       </Card>
 
       <Section title="About this activity" icon="information-circle-outline">
         <Text style={s.body}>{overview.about}</Text>
-        <View style={s.grid2}>
-          <Field label="ACTIVITY TYPE" value={activity.category} />
-          <Field label="FUNDING SOURCE" value={overview.funding} />
-          <Field label="ACTIVITY LEAD" value={overview.lead} />
-          <Field label="TARGET PARTICIPANTS" value={`${activity.capacity?.max ?? 50} ${overview.audience}`} />
-          <Field label="TOPICS" value={overview.topics} />
-          <Field label="DOCUMENTATION" value={overview.documentation} />
+        <View>
+          <Field small label="Funding source" value={overview.funding} />
+          <Field small label="Activity lead" value={overview.lead} />
+          <Field small label="Target participants" value={`${activity.capacity?.max ?? 50} ${overview.audience}`} />
+          <Field small label="Topics" value={overview.topics} />
+          <Field small label="Documentation" value={overview.documentation} />
         </View>
         <View style={s.divider} />
         <View style={s.between}>
@@ -151,12 +147,9 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
         </View>
       </Section>
 
-      <Section title="Schedule and venue" icon="calendar-outline">
-        <Text style={s.body}>{activity.dates}</Text>
-        <Text style={s.body}>{overview.schedule.time}</Text>
-        <Text style={s.body}>{activity.venue}</Text>
-        <Text style={s.meta}>{overview.schedule.rooms}</Text>
-        <View style={s.divider} />
+      {/* The date, time and venue are in the header above, so this card only adds the rooms and the way there. */}
+      <Section title="Rooms and directions" icon="navigate-outline">
+        <Text style={s.body}>{overview.schedule.rooms}</Text>
         <Text style={s.body}>{extras.directions.tip}</Text>
         <Pill label="Open in Maps" onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(extras.directions.address)}`).catch(() => {})} />
       </Section>
@@ -168,11 +161,8 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
       <Section title="Participating agencies" icon="business-outline">
         {overview.hosts.map((h) => (
           <View key={h.name} style={s.between}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{h.name}</Text>
-              <Text style={s.meta}>{h.note}</Text>
-            </View>
-            <StatusPill label={h.role} tone={h.role === 'Implementing' ? 'ok' : h.role === 'Funding' ? 'info' : 'muted'} />
+            <Text style={[s.name, { flex: 1 }]}>{h.name}</Text>
+            <StatusPill label={h.role} tone="muted" />
           </View>
         ))}
       </Section>
@@ -200,9 +190,7 @@ export function OverviewTab({ activity, goTo, open }: { activity: Activity; goTo
       </Section>
 
       <Section title="Questions? Contact the coordinator" icon="chatbubble-ellipses-outline">
-        <Text style={s.body}>{extras.contact.note}</Text>
         <Pill label={`Email ${extras.contact.role.toLowerCase()}`} primary onPress={() => Linking.openURL(`mailto:${extras.contact.email}`).catch(() => {})} />
-        <Text style={s.meta}>Sample address: {extras.contact.email}</Text>
       </Section>
     </View>
   );
@@ -218,8 +206,7 @@ export function UpdatesTab({ activity }: { activity: Activity }) {
     return (
       <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 28 }}>
         <Ionicons name="megaphone-outline" size={28} color={brand.primary} />
-        <Text style={s.h}>No updates yet</Text>
-        <Text style={s.body}>Announcements about this activity will show up here.</Text>
+        <Text style={[s.h, { color: brand.dark }]}>No updates yet</Text>
       </Card>
     );
   return (
@@ -231,7 +218,7 @@ export function UpdatesTab({ activity }: { activity: Activity }) {
               <Ionicons name="megaphone-outline" size={18} color={brand.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.h}>{u.title}</Text>
+              <Text style={[s.h, { color: brand.dark }]}>{u.title}</Text>
               <Text style={s.meta}>
                 {u.from} · {u.when}
               </Text>
@@ -246,7 +233,8 @@ export function UpdatesTab({ activity }: { activity: Activity }) {
 
 /* ------------------------------ Sessions ------------------------------ */
 
-const statusTone = { Completed: 'ok', 'In progress': 'warn', 'Up next': 'info', Scheduled: 'muted' } as const;
+// Only the session happening now gets color; everything else is quiet grey.
+const statusTone = { Completed: 'muted', 'In progress': 'ok', 'Up next': 'muted', Scheduled: 'muted' } as const;
 
 export function SessionsTab({ focus, onFocus, goTo, notify }: {
   focus: SessionFocus | null;
@@ -271,33 +259,25 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
             </Text>
             <StatusPill label={session.status} tone={statusTone[session.status]} />
           </View>
-          <Text style={s.title}>{session.title}</Text>
-          <Text style={s.meta}>
-            {session.files} file{session.files === 1 ? '' : 's'}
-          </Text>
+          <Text style={[s.title, { color: brand.dark }]}>{session.title}</Text>
           <View style={s.grid2}>
-            <Field label="DATE" value={session.date} />
-            <Field label="TIME" value={session.range} />
-            <Field label="RESOURCE PERSON" value={session.speaker} />
-            <Field label="VENUE / ROOM" value={session.venue} />
+            <Field label="Date" value={session.date} />
+            <Field label="Time" value={session.range} />
+            <Field label="Resource person" value={session.speaker} />
+            <Field label="Venue / room" value={session.venue} />
           </View>
           <Text style={s.body}>{session.about}</Text>
         </Card>
 
         <Card style={{ gap: 8 }}>
-          <Text style={s.h}>Check-in</Text>
+          <Text style={[s.h, { color: brand.dark }]}>Check-in</Text>
           <View style={s.grid2}>
-            <Field label="CHECK-IN WINDOW" value={`${session.opens} – ${session.closes}`} />
-            <Field label="SESSION CODE" value={session.shortCode} />
+            <Field label="Check-in window" value={`${session.opens} – ${session.closes}`} />
           </View>
-          <Text style={s.meta}>Scan the session QR code at the entrance. If the camera is not working, type the session code on the scanner.</Text>
         </Card>
 
         <Card style={{ gap: 8 }}>
-          <Text style={s.h}>Session materials</Text>
-          <Text style={s.meta}>
-            {session.files > 0 ? `${session.files} file${session.files === 1 ? '' : 's'} uploaded for this session.` : 'No materials uploaded for this session yet.'}
-          </Text>
+          <Text style={[s.h, { color: brand.dark }]}>Session materials</Text>
           <Pill
             label="View Session Materials"
             onPress={() => (session.files > 0 ? goTo('Materials', { materials: session.title }) : notify('No materials uploaded for this session yet'))}
@@ -305,8 +285,7 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
         </Card>
 
         <Card style={{ gap: 8 }}>
-          <Text style={s.h}>Session schedule</Text>
-          <Text style={s.meta}>See where this session fits in the activity schedule.</Text>
+          <Text style={[s.h, { color: brand.dark }]}>Session schedule</Text>
           <Pill label="View Session Schedule" onPress={() => onFocus({ id: session.id, view: 'schedule' })} />
         </Card>
 
@@ -315,7 +294,7 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
   }
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 16 }}>
       {session && (
         <PressableScale scaleTo={0.96} onPress={() => onFocus({ id: session.id, view: 'detail' })} style={s.backRow}>
           <Ionicons name="chevron-back" size={16} color={brand.primary} />
@@ -323,10 +302,10 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
         </PressableScale>
       )}
       {days.map((day) => (
-        <View key={day.label} style={{ gap: 10 }}>
+        <View key={day.label} style={{ gap: 8 }}>
           <View style={s.dayHead}>
             <Text style={s.dayLabel}>{day.label}</Text>
-            {day.today && <StatusPill label="Today" tone="warn" />}
+            {day.today && <StatusPill label="Today" tone="ok" />}
           </View>
           {day.sessions.map((sess) => {
             const picked = sess.id === session?.id;
@@ -339,18 +318,15 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
                 <Card style={[{ flex: 1, gap: 4 }, picked && { backgroundColor: brand.soft, borderWidth: 2, borderColor: brand.primary }]}>
                   <View style={s.between}>
                     <Text style={[s.kicker, { color: brand.primary }]}>{sess.kind}</Text>
-                    {picked && <StatusPill label="Selected session" tone="info" />}
+                    {picked && <StatusPill label="Selected" tone="ok" />}
                   </View>
                   <View style={s.between}>
                     <Text style={[s.name, { flex: 1 }]}>{sess.title}</Text>
                     <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                   </View>
                   <Text style={s.meta}>{sess.speaker}</Text>
-                  <View style={s.statusRow}>
+                  <View style={[s.statusRow, { marginTop: 4 }]}>
                     <StatusPill label={sess.status} tone={statusTone[sess.status]} />
-                    <Text style={s.meta}>
-                      {sess.files} file{sess.files === 1 ? '' : 's'}
-                    </Text>
                   </View>
                 </Card>
               </PressableScale>
@@ -362,11 +338,19 @@ export function SessionsTab({ focus, onFocus, goTo, notify }: {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, small }: { label: string; value: string; small?: boolean }) {
+  // Small facts are one full-width row: the label on the left, the value filling the rest and aligned right.
+  if (small)
+    return (
+      <View style={s.factRow}>
+        <Text style={s.smallLabel}>{label}</Text>
+        <Text style={s.smallValue}>{value}</Text>
+      </View>
+    );
   return (
     <View style={{ width: '48%', gap: 2 }}>
-      <Text style={s.kicker}>{label}</Text>
-      <Text style={s.name}>{value}</Text>
+      <Text style={small ? s.smallLabel : s.kicker}>{label}</Text>
+      <Text style={small ? s.smallValue : s.name}>{value}</Text>
     </View>
   );
 }
@@ -390,15 +374,6 @@ function Pill({ label, primary, onPress }: { label: string; primary?: boolean; o
 const sizeMb = (meta: string) => {
   const m = /([\d.]+)\s*(KB|MB)/.exec(meta);
   return m ? (m[2] === 'KB' ? Number(m[1]) / 1024 : Number(m[1])) : 0;
-};
-
-const badgeColor: Record<string, [string, string]> = {
-  PPT: ['#FFEDD5', '#C2410C'],
-  PDF: ['#FEE2E2', '#B91C1C'],
-  DOC: ['#DBEAFE', '#1D4ED8'],
-  IMG: ['#EDE9FE', '#6D28D9'],
-  HND: ['#CCFBF1', '#0F766E'],
-  LINK: ['#E2E8F0', '#475569'],
 };
 
 export function MaterialsTab({ notify, session: initialSession = '' }: { notify: Notify; session?: string }) {
@@ -461,32 +436,24 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
 
       {groups.map((g) => (
         <View key={g.title} style={{ gap: 10 }}>
-          <View style={s.between}>
-            <Text style={[s.name, { flex: 1 }]}>{g.title}</Text>
-            <View style={[s.count, { backgroundColor: brand.soft }]}>
-              <Text style={[s.countText, { color: brand.dark }]}>{g.items.length}</Text>
-            </View>
-          </View>
+          <Text style={[s.name, { color: brand.dark }]}>{g.title}</Text>
           {g.items.map((m) => {
-            const [bg, fg] = badgeColor[m.badge] ?? badgeColor.LINK;
             const state = offline[m.id];
             const saved = state === 'saved';
             const saving = state === 'saving';
             return (
               <Card key={m.id} style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[s.fileBadge, { backgroundColor: bg }]}>
-                    <Text style={[s.fileBadgeText, { color: fg }]}>{m.badge}</Text>
+                  <View style={[s.fileBadge, { backgroundColor: brand.soft }]}>
+                    <Text style={[s.fileBadgeText, { color: brand.dark }]}>{m.badge}</Text>
                   </View>
-                  <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flex: 1, gap: 4, justifyContent: 'center' }}>
                     <Text style={s.name}>{m.title}</Text>
                     <View style={s.statusRow}>
                       <Text style={s.meta}>{m.meta}</Text>
                       {saved && <StatusPill label="Offline" tone="ok" />}
-                      {saving && <StatusPill label="Saving…" tone="info" />}
+                      {saving && <StatusPill label="Saving…" tone="ok" />}
                     </View>
-                    <Text style={s.meta}>{m.by}</Text>
-                    <Text style={s.meta}>{m.uploaded}</Text>
                   </View>
                 </View>
                 <View style={s.fileActions}>
@@ -520,7 +487,7 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
       ))}
 
       <BottomSheet visible={filtering} onClose={() => setFiltering(false)} title="Filter materials">
-        <Text style={s.kicker}>SESSION</Text>
+        <Text style={s.kicker}>Session</Text>
         <View style={s.sessionInput}>
           <Ionicons name="search" size={16} color={colors.muted} />
           <TextInput
@@ -535,7 +502,7 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
           <Chip label="All sessions" active={!session.trim()} onPress={() => setSession('')} />
         </View>
 
-        <Text style={[s.kicker, { marginTop: 4 }]}>FILE TYPE</Text>
+        <Text style={[s.kicker, { marginTop: 4 }]}>File type</Text>
         <View style={s.chips}>
           {materialTypes.map((t) => (
             <Chip key={t} label={t} active={type === t} onPress={() => setType(t)} />
@@ -567,26 +534,23 @@ export function MaterialsTab({ notify, session: initialSession = '' }: { notify:
 
 /* ------------------------------ Attendance ------------------------------ */
 
-const attTone = { 'Checked in': 'ok', 'Checked out': 'info', 'Pending sync': 'warn', 'Not checked in': 'muted', 'Not yet open': 'muted' } as const;
+const attTone = { 'Checked in': 'ok', 'Checked out': 'ok', 'Pending sync': 'warn', 'Not checked in': 'muted', 'Not yet open': 'muted' } as const;
 
-export function AttendanceTab({ title }: { title: string }) {
+export function AttendanceTab() {
   const brand = useBrand();
-  const pending = attendanceHistory.filter((h) => !h.synced).length;
+  const pending = attendanceDays.flatMap((d) => d.rows).filter((r) => r.status === 'Pending sync').length;
   const pct = Math.round((attendanceDone / attendanceTotal) * 100);
   return (
     <View style={{ gap: 12 }}>
       <Card style={{ gap: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.meta}>Attendance for</Text>
-            <Text style={s.h}>{title}</Text>
-          </View>
+        <View style={s.between}>
+          <Text style={[s.h, { color: brand.dark }]}>Check points</Text>
           <Text style={[s.big, { color: brand.primary }]}>
             {attendanceDone}/{attendanceTotal}
           </Text>
         </View>
         <Text style={s.meta}>
-          {pct}% so far. A certificate needs at least {certificateRules.minAttendance}%. Each day has four QR check points: morning in and out, afternoon in and out.
+          {pct}% so far · {certificateRules.minAttendance}% needed
         </Text>
       </Card>
 
@@ -594,7 +558,7 @@ export function AttendanceTab({ title }: { title: string }) {
         <View key={d.label} style={{ gap: 8 }}>
           <View style={s.dayHead}>
             <Text style={s.dayLabel}>{d.label}</Text>
-            {d.today && <StatusPill label="Today" tone="warn" />}
+            {d.today && <StatusPill label="Today" tone="ok" />}
           </View>
           <Card style={{ paddingVertical: 4 }}>
             {d.rows.map((r, i) => (
@@ -610,28 +574,14 @@ export function AttendanceTab({ title }: { title: string }) {
         </View>
       ))}
 
-      <Text style={s.dayLabel}>My attendance history</Text>
-      <Card style={{ paddingVertical: 4 }}>
-        {attendanceHistory.map((h, i) => (
-          <View key={h.title} style={[s.attRow, i > 0 && s.attBorder]}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{h.title}</Text>
-              <Text style={s.meta}>{h.when}</Text>
-            </View>
-            <StatusPill label={h.synced ? 'Synced' : 'Pending sync'} tone={h.synced ? 'ok' : 'warn'} />
-          </View>
-        ))}
-      </Card>
-      <Text style={s.meta}>
-        Each check point is stored once, so repeated syncs never create duplicate records. ({pending} {pending === 1 ? 'item' : 'items'} pending sync)
-      </Text>
+      {pending > 0 && <Text style={s.meta}>{pending} pending sync</Text>}
     </View>
   );
 }
 
 /* ------------------------------ Submissions ------------------------------ */
 
-const stateTone = { 'Not eligible': 'muted', Eligible: 'info', Released: 'ok' } as const;
+const stateTone = { 'Not eligible': 'muted', Eligible: 'ok', Released: 'ok' } as const;
 
 export function SubmissionsTab({ activity, open, onCertificate }: { activity: Activity; open: FormOpener; onCertificate: () => void }) {
   const brand = useBrand();
@@ -641,53 +591,42 @@ export function SubmissionsTab({ activity, open, onCertificate }: { activity: Ac
 
   return (
     <View style={{ gap: 12 }}>
-      <Card style={{ gap: 4 }}>
+      <Card style={{ gap: 8 }}>
         <View style={s.between}>
-          <Text style={s.h}>Submissions</Text>
-          <StatusPill label={completed ? 'Open' : 'Opens after the activity'} tone={completed ? 'ok' : 'muted'} />
+          <Text style={[s.h, { color: brand.dark }]}>Submissions</Text>
+          <StatusPill label={completed ? 'Open' : 'Locked'} tone={completed ? 'ok' : 'muted'} />
         </View>
-        <Text style={s.meta}>
-          {completed
-            ? 'The activity is complete. Finish your feedback, reentry plan and output below.'
-            : 'Feedback, the reentry plan and output submissions open once this activity is completed.'}
-        </Text>
         <ChecklistRows activity={activity} open={open} locked={!completed} />
       </Card>
 
-      <Card style={{ gap: 8 }}>
+      <Card style={{ gap: 12 }}>
         <View style={s.between}>
-          <Text style={s.h}>Certificate</Text>
+          <Text style={[s.h, { color: brand.dark }]}>Certificate</Text>
           <StatusPill label={cert.state} tone={stateTone[cert.state]} />
         </View>
         {cert.requirements.map((r) => (
           <View key={r.key} style={s.statusRow}>
             <Ionicons name={r.ok ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={r.ok ? brand.primary : colors.icon} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{r.label}</Text>
-              <Text style={s.meta}>{r.note}</Text>
-            </View>
+            <Text style={[s.name, { flex: 1 }]}>{r.label}</Text>
+            {r.note ? <Text style={s.meta}>{r.note}</Text> : null}
           </View>
         ))}
         {cert.state === 'Released' && <Button label="View certificate" onPress={onCertificate} />}
-        <Text style={s.meta}>
-          {certificateRules.release === 'Automatic'
-            ? 'The certificate is released automatically once every requirement is met.'
-            : 'The organization releases the certificate after you meet every requirement.'}
-        </Text>
       </Card>
     </View>
   );
 }
 const s = StyleSheet.create({
-  h: { fontSize: 16, fontWeight: '600', color: colors.text },
+  // One type scale for every activity tab: 15 card heading, 14 item name, 13 body, 12 detail.
+  h: { fontSize: 15, fontWeight: '600', color: colors.text },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sectionIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
-  name: { fontSize: 15, fontWeight: '600', color: colors.text },
-  body: { fontSize: 15, color: colors.muted, lineHeight: 22 },
-  meta: { fontSize: 13, color: colors.muted },
-  kicker: { fontSize: 10, fontWeight: '700', color: colors.muted, letterSpacing: 0.4 },
-  big: { fontSize: 24, fontWeight: '700' },
+  sectionIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 16, fontWeight: '600', color: colors.text },
+  name: { fontSize: 14, fontWeight: '600', color: colors.text },
+  body: { fontSize: 13, color: colors.muted, lineHeight: 19 },
+  meta: { fontSize: 12, color: colors.muted },
+  kicker: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  big: { fontSize: 20, fontWeight: '600' },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bulletRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
@@ -696,18 +635,22 @@ const s = StyleSheet.create({
   fill: { height: 8, borderRadius: 4 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginTop: 4 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 14, fontWeight: '700' },
+  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 12, fontWeight: '600' },
   dayHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dayLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
-  sessionRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  timeCol: { width: 38, alignItems: 'center', paddingTop: 12 },
-  time: { fontSize: 14, fontWeight: '700', color: colors.text },
-  timeAp: { fontSize: 10, color: colors.muted },
+  dayLabel: { fontSize: 13, fontWeight: '600', color: colors.text },
+  sessionRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  timeCol: { width: 40, alignItems: 'center', paddingTop: 16 },
+  time: { fontSize: 13, fontWeight: '600', color: colors.text },
+  timeAp: { fontSize: 11, color: colors.muted },
   backRow: { flexDirection: 'row', alignItems: 'center', minHeight: 32 },
   grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+  // The small facts under "About this activity": quiet detail, not headings.
+  factRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  smallLabel: { width: 124, fontSize: 12, lineHeight: 18, color: colors.muted },
+  smallValue: { flex: 1, fontSize: 12, lineHeight: 18, fontWeight: '500', color: colors.text },
   pillBtn: { minHeight: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  pillBtnText: { fontSize: 14, fontWeight: '600' },
+  pillBtnText: { fontSize: 13, fontWeight: '600' },
   search: {
     flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderRadius: radius.pill,
     paddingLeft: 14, paddingRight: 6, backgroundColor: '#fff', ...shadow,
@@ -717,14 +660,12 @@ const s = StyleSheet.create({
   filterDot: { position: 'absolute', top: 7, right: 7, width: 8, height: 8, borderRadius: 4, borderWidth: 1.5, borderColor: '#fff' },
   sessionInput: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
-  count: { minWidth: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  countText: { fontSize: 12, fontWeight: '700' },
-  fileBadge: { width: 44, height: 52, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  fileBadgeText: { fontSize: 12, fontWeight: '700' },
+  fileBadge: { width: 40, height: 48, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  fileBadgeText: { fontSize: 11, fontWeight: '600' },
   fileActions: { flexDirection: 'row', gap: 8 },
   fileBtn: { flex: 1, minHeight: 38, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   fileBtnText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  attRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  attRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   attBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   offlineBar: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.sm, paddingHorizontal: 12, minHeight: 40 },
   empty: { textAlign: 'center', color: colors.muted, marginTop: 24 },

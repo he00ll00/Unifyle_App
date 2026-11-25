@@ -33,13 +33,13 @@ export const days: SampleDay[] = [
     label: 'Day 1 · June 17',
     sessions: [
       {
-        id: 's1', shortCode: 'RUB-1021', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'SESSION 1', title: 'Introduction to Rubber Production',
+        id: 's1', shortCode: 'RUB-1021', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'Session 1', title: 'Introduction to Rubber Production',
         speaker: 'Dr. Leonilo B. Castor', status: 'Completed', files: 2,
         date: 'June 17, 2025', range: '8:30 AM – 10:30 AM', venue: 'Training Hall A',
         about: 'Overview of rubber production, clone selection and site suitability.',
       },
       {
-        id: 's2', shortCode: 'RUB-1022', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'WORKSHOP', title: 'Latex Handling and Quality Control',
+        id: 's2', shortCode: 'RUB-1022', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'Workshop', title: 'Latex Handling and Quality Control',
         speaker: 'Ms. Joy Fabian', status: 'Completed', files: 2,
         date: 'June 17, 2025', range: '1:00 PM – 4:00 PM', venue: 'Training Hall A',
         about: 'Hands-on latex collection, handling and quality checks.',
@@ -51,13 +51,13 @@ export const days: SampleDay[] = [
     today: true,
     sessions: [
       {
-        id: 's3', shortCode: 'RUB-2031', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'SESSION 2', title: 'Rubber Tapping Techniques',
+        id: 's3', shortCode: 'RUB-2031', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'Session 2', title: 'Rubber Tapping Techniques',
         speaker: 'Engr. Ana Lucero', status: 'In progress', files: 3,
         date: 'June 18, 2025', range: '8:30 AM – 11:30 AM', venue: 'Training Hall B',
         about: 'Tapping systems, cut depth and panel management.',
       },
       {
-        id: 's4', shortCode: 'RUB-2032', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'PRACTICUM', title: 'Demo Farm: Tapping Practicum',
+        id: 's4', shortCode: 'RUB-2032', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'Practicum', title: 'Demo Farm: Tapping Practicum',
         speaker: 'Engr. Ana Lucero', status: 'Up next', files: 0,
         date: 'June 18, 2025', range: '1:00 PM – 4:30 PM', venue: 'Demo Farm Block C',
         about: 'Hands-on tapping in three stations. Bring boots and a hat. Facilitators give feedback on each participant’s cuts.',
@@ -68,13 +68,13 @@ export const days: SampleDay[] = [
     label: 'Day 3 · June 19',
     sessions: [
       {
-        id: 's5', shortCode: 'RUB-3041', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'SESSION 3', title: 'Plantation Management',
+        id: 's5', shortCode: 'RUB-3041', opens: '8:00 AM', closes: '10:00 AM', time: '8:30', period: 'AM', kind: 'Session 3', title: 'Plantation Management',
         speaker: 'Mr. Dennis Ramos', status: 'Scheduled', files: 1,
         date: 'June 19, 2025', range: '8:30 AM – 11:30 AM', venue: 'Training Hall B',
         about: 'Maintenance calendars, fertilizer schedules and plantation records.',
       },
       {
-        id: 's6', shortCode: 'RUB-3042', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'CLOSING', title: 'Reentry Planning and Closing',
+        id: 's6', shortCode: 'RUB-3042', opens: '1:00 PM', closes: '2:00 PM', time: '1:00', period: 'PM', kind: 'Closing', title: 'Reentry Planning and Closing',
         speaker: 'Ms. Joy Fabian', status: 'Scheduled', files: 1,
         date: 'June 19, 2025', range: '1:00 PM – 3:30 PM', venue: 'Training Hall A',
         about: 'Draft your reentry plan and close the activity.',
@@ -232,8 +232,6 @@ export const attendanceHistory = [
   { title: 'Day 1 · Morning check-in', when: 'June 17 · 8:21 AM', synced: true },
 ];
 
-/** Check point windows, so a typed session code can be matched to its session. */
-export const sessionByCode = (code: string) => allSessions.find((x) => x.shortCode === code.trim().toUpperCase());
 
 export const orgAbout = {
   handle: '@prri',
@@ -252,6 +250,8 @@ export const notifications = {
   pending: {
     name: 'DA Bureau of Agricultural Research',
     short: 'DA BAR',
+    /** The invitation code behind this invitation, used when it is accepted. */
+    code: 'DABAR-0001',
     by: 'Invited by Dir. Marites Ocampo',
     expires: 'Expires Jun 30, 2025',
   },

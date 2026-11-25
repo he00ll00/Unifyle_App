@@ -45,12 +45,12 @@ export default function CheckIn() {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} style={{ backgroundColor: colors.bg }}>
       <Card style={{ gap: 4 }}>
         <View style={styles.between}>
-          <Text style={[styles.kicker, { color: brand.primary }]}>{agency.short} · REGISTERED ACTIVITY</Text>
+          <Text style={[styles.kicker, { color: brand.primary }]}>{agency.short} · Registered activity</Text>
           <PressableScale accessibilityRole="button" scaleTo={0.94} onPress={() => setPicking(true)} hitSlop={8}>
             <Text style={[styles.change, { color: brand.primary }]}>Change</Text>
           </PressableScale>
         </View>
-        <Text style={styles.title}>{activity?.title ?? 'Choose an activity'}</Text>
+        <Text style={[styles.title, { color: brand.dark }]}>{activity?.title ?? 'Choose an activity'}</Text>
         <Text style={styles.meta}>June 18, 2025 · Day 2 · {activity && isRegistered(activity, demo.joined) ? 'Registered' : 'Not registered'}</Text>
       </Card>
 
@@ -59,16 +59,10 @@ export default function CheckIn() {
           <Ionicons name="scan-outline" size={84} color={brand.primary} />
           <Ionicons name="camera-outline" size={30} color={brand.primary} style={styles.camera} />
         </View>
-        <Text style={styles.scanText}>Scan the QR code of the check point</Text>
         <Button label="Open scanner" onPress={() => router.push('/scanner')} style={{ alignSelf: 'stretch' }} />
       </View>
 
-      <Card style={{ gap: 2 }}>
-        <Text style={styles.h}>Before check in</Text>
-        <Text style={styles.meta}>Offline scans use saved details; validation syncs later.</Text>
-      </Card>
-
-      <Text style={[styles.h, { marginTop: 4 }]}>Today’s attendance</Text>
+      <Text style={[styles.h, { marginTop: 4, color: brand.dark }]}>Today’s attendance</Text>
       <Card>
         {(today?.rows ?? []).map((r, i) => (
           <View key={r.name} style={[styles.row, i > 0 && styles.rowBorder]}>
@@ -86,7 +80,6 @@ export default function CheckIn() {
         visible={picking}
         onClose={() => setPicking(false)}
         title="Choose activity"
-        subtitle={`Active and upcoming ${agency.short} activities only.`}
       >
         {list.map((a) => {
           const date = dateParts(a);
@@ -112,8 +105,7 @@ export default function CheckIn() {
             </PressableScale>
           );
         })}
-        <Text style={[styles.meta, { textAlign: 'center' }]}>Only registered activities are available for check-in.</Text>
-        <Text style={styles.h}>Join with an activity code</Text>
+        <Text style={[styles.h, { color: brand.dark }]}>Join with an activity code</Text>
         <TextInput
           value={joinCode}
           onChangeText={(v) => {

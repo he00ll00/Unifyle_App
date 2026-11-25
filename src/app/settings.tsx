@@ -1,11 +1,9 @@
-import Constants from 'expo-constants';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Group, Row, SectionTitle } from '@/components/lists';
 import { Text } from '@/components/Text';
 import { PressableScale } from '@/components/ui';
 import { TEXT_SIZES, useSettings } from '@/store/Settings';
-import { useStore } from '@/store/AppStore';
 import { colors, shadow } from '@/theme';
 
 /**
@@ -14,16 +12,13 @@ import { colors, shadow } from '@/theme';
  */
 export default function Settings() {
   const { textSize, setTextSize } = useSettings();
-  const { online } = useStore();
   const [prefs, setPrefs] = useState({ reminders: true, updates: true, messages: false });
-  const version = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
     <ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
       <SectionTitle>Display</SectionTitle>
       <View style={s.card}>
         <Text style={s.cardTitle}>Text size</Text>
-        <Text style={s.cardNote}>Makes the words in the whole app bigger or smaller. It adds to your phone’s own text size.</Text>
 
         <View style={s.preview} accessibilityLabel="Preview of the chosen text size">
           <Text style={s.previewTitle}>Rubber Production and Tapping Technology</Text>
@@ -46,32 +41,25 @@ export default function Settings() {
 
       <SectionTitle>General</SectionTitle>
       <Group>
-        <Row icon="language-outline" label="Language" value="English" note="More languages are coming" />
+        <Row icon="language-outline" label="Language" value="English" />
       </Group>
 
       <SectionTitle>Notifications</SectionTitle>
       <Group>
         {([
-          ['reminders', 'Session reminders', 'A nudge before a session starts'],
-          ['updates', 'Activity updates', 'Changes to your activities'],
-          ['messages', 'Messages', 'New messages from your agency'],
-        ] as const).map(([key, label, note]) => (
+          ['reminders', 'Session reminders'],
+          ['updates', 'Activity updates'],
+          ['messages', 'Messages'],
+        ] as const).map(([key, label]) => (
           <Row
             key={key}
             icon="notifications-outline"
             label={label}
-            note={note}
             right={<Switch value={prefs[key]} onValueChange={(v) => setPrefs((p) => ({ ...p, [key]: v }))} trackColor={{ true: colors.primary, false: colors.border }} accessibilityLabel={label} />}
           />
         ))}
       </Group>
 
-      <SectionTitle>Saved on this phone</SectionTitle>
-      <Group>
-        <Row icon={online ? 'cloud-done-outline' : 'cloud-offline-outline'} label={online ? 'Online' : 'Offline'} note={online ? 'Nothing is waiting to sync.' : '1 check-in is waiting. It syncs when you are back online.'} />
-      </Group>
-
-      <Text style={s.version}>UniFyle · version {version}</Text>
     </ScrollView>
   );
 }
@@ -80,7 +68,6 @@ const s = StyleSheet.create({
   page: { padding: 16, gap: 12, paddingBottom: 40 },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, gap: 12, ...shadow },
   cardTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
-  cardNote: { fontSize: 14, lineHeight: 20, color: colors.muted },
   preview: { backgroundColor: colors.bg, borderRadius: 12, padding: 14, gap: 4 },
   previewTitle: { fontSize: 16, fontWeight: '600', color: colors.text },
   previewBody: { fontSize: 14, lineHeight: 20, color: colors.muted },
@@ -89,5 +76,4 @@ const s = StyleSheet.create({
   sizeOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   aa: { fontWeight: '600', color: colors.text },
   sizeLabel: { fontSize: 12, color: colors.muted, textAlign: 'center' },
-  version: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 12 },
 });

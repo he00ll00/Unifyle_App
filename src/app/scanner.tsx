@@ -2,28 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Text, TextInput } from '@/components/Text';
-import { Button } from '@/components/ui';
-import { sessionByCode } from '@/data/sample';
+import { Text } from '@/components/Text';
 import { colors } from '@/theme';
 
 /** Scanner screen, front end only: no camera. Tap the frame to try a sample scan. */
 export default function Scanner() {
   const [torch, setTorch] = useState(false);
   const [scanned, setScanned] = useState(false);
-  // Fallback when the camera is not working: type the session code shown by the facilitator.
-  const [code, setCode] = useState('');
-  const [codeError, setCodeError] = useState(false);
-  const [matched, setMatched] = useState('PM session');
 
-  const submitCode = () => {
-    const found = sessionByCode(code);
-    if (!found) return setCodeError(true);
-    setMatched(found.title);
-    setScanned(true);
-  };
-
-  // After a sample scan, show the result for a moment and return to check-in.
+  // After a sample scan, show the result for a moment and go back.
   useEffect(() => {
     if (!scanned) return;
     const t = setTimeout(() => router.back(), 1600);
@@ -49,29 +36,8 @@ export default function Scanner() {
             </View>
           )}
         </Pressable>
-        <Text style={styles.hint}>
-          {scanned ? `Checked in · ${matched} (sample). Saved on this device.` : 'Point the camera at the facilitator’s QR code'}
-        </Text>
-        {!scanned && <Text style={styles.tip}>No camera yet: tap the frame to try a sample scan</Text>}
-        {!scanned && (
-          <View style={styles.codeWrap}>
-            <TextInput
-              value={code}
-              onChangeText={(v) => {
-                setCode(v);
-                setCodeError(false);
-              }}
-              placeholder="Or type the session code, e.g. RUB-2032"
-              placeholderTextColor={colors.icon}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              onSubmitEditing={submitCode}
-              style={[styles.codeInput, codeError && { borderColor: '#F87171' }]}
-            />
-            {codeError && <Text style={styles.codeError}>That session code is not valid.</Text>}
-            <Button label="Check in with code" variant="soft" disabled={!code.trim()} onPress={submitCode} />
-          </View>
-        )}
+        <Text style={styles.hint}>{scanned ? 'Checked in (sample). Saved on this device.' : 'Scan the QR code'}</Text>
+        {!scanned && <Text style={styles.tip}>Tap the frame for a sample scan</Text>}
       </View>
 
       <View style={styles.bottom}>
@@ -83,7 +49,6 @@ export default function Scanner() {
         >
           <Ionicons name={torch ? 'flashlight' : 'flashlight-outline'} size={22} color={torch ? '#92400E' : '#fff'} />
         </Pressable>
-        <Button label="Close" variant="soft" onPress={() => router.back()} style={{ flex: 1 }} />
       </View>
     </View>
   );
@@ -105,9 +70,6 @@ const styles = StyleSheet.create({
   result: { alignItems: 'center', justifyContent: 'center' },
   hint: { color: '#fff', fontSize: 14, textAlign: 'center', maxWidth: 280 },
   tip: { color: colors.icon, fontSize: 12, textAlign: 'center', maxWidth: 260 },
-  codeWrap: { alignSelf: 'stretch', gap: 8 },
-  codeInput: { minHeight: 48, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: '#fff', letterSpacing: 1 },
-  codeError: { color: '#F87171', fontSize: 12 },
   bottom: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   round: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
 });
